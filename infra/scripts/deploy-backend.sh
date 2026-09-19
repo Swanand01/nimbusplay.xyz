@@ -51,7 +51,7 @@ tar -xzf /tmp/app.tar.gz -C /opt/cloud-gaming/release
 cd /opt/cloud-gaming/release
 npm ci --no-audit --no-fund
 npx prisma generate
-set -a; . /etc/cloud-gaming.env; set +a
+set +x; set -a; . /etc/cloud-gaming.env; set +a; set -x   # no xtrace: don't echo secrets
 npx prisma migrate deploy
 npm run build
 chown -R cloudgaming:cloudgaming /opt/cloud-gaming
