@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 # Deploy the backend to the EC2 host created by infra/terraform, via S3 + SSM (no SSH).
 #
-#   infra/scripts/deploy-backend.sh                 # deploy committed HEAD
-#   infra/scripts/deploy-backend.sh --env .env.prod # also install a new env file
+#   infra/scripts/deploy-backend.sh                       # deploy committed HEAD
+#   infra/scripts/deploy-backend.sh --env .env.production # also install new (non-secret) config
 #
 # Deploys `git archive HEAD`, so uncommitted changes are not shipped.
+#
+# Secrets live in SSM Parameter Store (SecureString) and never pass through this
+# script, S3 or command output. The host fetches them with its instance role and
+# writes /etc/cloud-gaming.env = non-secret config + secrets. See SECRETS below.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
@@ -17,6 +21,18 @@ ENV_FILE=""
 if [[ "${1:-}" == "--env" ]]; then
   ENV_FILE=${2:?usage: deploy-backend.sh [--env <file>]}
   [[ -f "$ENV_FILE" ]] || { echo "Env file not found: $ENV_FILE" >&2; exit 1; }
+fi
+
+# ENV_VAR=parameter-name pairs, fetched on the host from /cloud-gaming/<parameter-name>.
+SECRETS="AUTH_TOKEN_SECRET=auth-token-secret APOLLO_API_PASSWORD=apollo-api-password"
+
+if [[ -n "$ENV_FILE" ]]; then
+  for pair in $SECRETS; do
+    if grep -Eq "^${pair%%=*}=.+" "$ENV_FILE"; then
+      echo "$ENV_FILE sets ${pair%%=*}; secrets belong in SSM (/cloud-gaming/${pair#*=}), not the env file." >&2
+      exit 1
+    fi
+  done
 fi
 
 INSTANCE_ID=$(terraform -chdir="$TF_DIR" output -raw backend_instance_id)
@@ -36,7 +52,7 @@ aws s3 cp --only-show-errors "$TMP/app.tar.gz" "s3://$BUCKET/$KEY"
 ENV_STEP=""
 if [[ -n "$ENV_FILE" ]]; then
   aws s3 cp --only-show-errors "$ENV_FILE" "s3://$BUCKET/env/cloud-gaming.env"
-  ENV_STEP="aws s3 cp --only-show-errors s3://$BUCKET/env/cloud-gaming.env /etc/cloud-gaming.env && chmod 600 /etc/cloud-gaming.env && aws s3 rm --only-show-errors s3://$BUCKET/env/cloud-gaming.env"
+  ENV_STEP="aws s3 cp --only-show-errors s3://$BUCKET/env/cloud-gaming.env /etc/cloud-gaming.config.env && chmod 600 /etc/cloud-gaming.config.env && aws s3 rm --only-show-errors s3://$BUCKET/env/cloud-gaming.env"
 fi
 
 read -r -d '' REMOTE <<SCRIPT || true
@@ -44,7 +60,19 @@ set -euxo pipefail
 export PATH=/usr/local/bin:\$PATH HOME=/root
 cloud-init status --wait >/dev/null || true   # first deploy may race the Node install in user data
 $ENV_STEP
-test -f /etc/cloud-gaming.env || { echo 'Missing /etc/cloud-gaming.env; rerun with --env <file>'; exit 1; }
+test -f /etc/cloud-gaming.config.env || { echo 'Missing /etc/cloud-gaming.config.env; rerun with --env <file>'; exit 1; }
+set +x   # never trace secret values
+umask 077
+{
+  cat /etc/cloud-gaming.config.env
+  for pair in $SECRETS; do
+    value=\$(aws ssm get-parameter --region $AWS_REGION --with-decryption --name "/cloud-gaming/\${pair#*=}" --query Parameter.Value --output text)
+    echo "\${pair%%=*}=\$value"
+  done
+} > /etc/cloud-gaming.env.tmp
+mv /etc/cloud-gaming.env.tmp /etc/cloud-gaming.env
+echo "Wrote /etc/cloud-gaming.env (config + secrets from SSM)"
+set -x
 rm -rf /opt/cloud-gaming/release && mkdir -p /opt/cloud-gaming/release
 aws s3 cp --only-show-errors s3://$BUCKET/$KEY /tmp/app.tar.gz
 tar -xzf /tmp/app.tar.gz -C /opt/cloud-gaming/release

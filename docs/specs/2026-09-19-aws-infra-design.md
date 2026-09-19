@@ -76,8 +76,10 @@ Backend role (`cloud-gaming-backend`):
   `/opt/cloud-gaming`, data dir `/opt/cloud-gaming/data` (SQLite), systemd unit
   `cloud-gaming.service` running `node dist/server.js` with
   `EnvironmentFile=/etc/cloud-gaming.env`, `HOST=0.0.0.0`.
-- `/etc/cloud-gaming.env` is written by the deploy script (not user data), so
-  secrets never land in Terraform state.
+- Secrets (`AUTH_TOKEN_SECRET`, `APOLLO_API_PASSWORD`) are SSM Parameter Store
+  SecureStrings under `/cloud-gaming/`, created by hand (not Terraform, so they
+  never land in state). On each deploy the host fetches them with its instance
+  role and writes root-only `/etc/cloud-gaming.env` = non-secret config + secrets.
 
 ## Deploy flow (`infra/scripts/deploy-backend.sh`)
 

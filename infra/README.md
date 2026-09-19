@@ -28,8 +28,18 @@ can't delete it.
 Ships `git archive HEAD` to the backend host via S3 + SSM (no SSH), then runs
 `npm ci`, Prisma migrations, build, and restarts `cloud-gaming.service`.
 
+Secrets are SecureString parameters in SSM Parameter Store, never in env files:
+
 ```sh
-cp .env.production.example .env.production     # fill secrets + terraform outputs
+aws ssm put-parameter --type SecureString --overwrite --name /cloud-gaming/auth-token-secret --value "$(openssl rand -base64 48 | tr -d '\n/+=')"
+aws ssm put-parameter --type SecureString --overwrite --name /cloud-gaming/apollo-api-password --value '<AMI default Apollo password>'
+```
+
+The host fetches them with its instance role on every deploy and writes
+`/etc/cloud-gaming.env` (root-only) = non-secret config + secrets.
+
+```sh
+cp .env.production.example .env.production     # non-secret config + terraform outputs
 infra/scripts/deploy-backend.sh --env .env.production   # first deploy / env change
 infra/scripts/deploy-backend.sh                          # code-only deploys
 ```

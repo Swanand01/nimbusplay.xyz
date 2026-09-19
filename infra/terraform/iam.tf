@@ -84,6 +84,13 @@ data "aws_iam_policy_document" "backend" {
     resources = ["${aws_s3_bucket.deploy.arn}/*"]
   }
 
+  # Secrets (SecureString, default aws/ssm key), fetched by deploy-backend.sh on the host.
+  statement {
+    sid       = "ReadSecrets"
+    actions   = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/cloud-gaming/*"]
+  }
+
   # deploy-backend.sh deletes the staged env file after installing it.
   statement {
     sid       = "DeleteStagedEnv"
