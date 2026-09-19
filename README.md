@@ -2,19 +2,13 @@
 
 MVP backend for one-user-to-one-VM cloud gaming with Apollo on AWS.
 
-For now, Artemis still initiates pairing. This service starts/stops the user's VM, submits the Artemis PIN to Apollo, and grants the paired device full Apollo permissions.
+This service starts/stops the user's VM and pairs Artemis with it: either a one-tap `art://` link (`POST /pairing/link`, needs the patched Artemis from github.com/Swanand01/moonlight-android) or by submitting the PIN Artemis shows (`POST /pairing/pin`).
 
-## Current AWS Defaults
+## AWS
 
-```text
-Region: ap-south-1
-AMI: ami-04fe85ad48985c7e7
-Instance type: g4dn.xlarge
-Key pair: Gaming
-Security group: sg-0b0cd0139dbf5796e
-Root disk: 50 GiB from AMI
-Per-user game disk: 140 GiB EBS volume
-```
+Infra (VPC, security groups, IAM, backend host, gaming VM launch template) is
+Terraform in `infra/terraform`; see [infra/README.md](infra/README.md). Gaming VMs
+are g4dn.xlarge from the launch template, each with a persistent 140 GiB game volume.
 
 ## Flow
 
@@ -29,6 +23,10 @@ POST /sessions/start
 
 GET /sessions/current
   returns current VM/session status
+
+POST /pairing/link
+  returns a one-time art:// link (valid ~3 min); opening it in Artemis adds the VM
+  and pairs with an Apollo OTP, no PIN typing
 
 POST /pairing/pin
   submits the Artemis/Moonlight PIN to Apollo on the ready VM
@@ -120,6 +118,16 @@ Stop:
 ```bash
 curl -X POST http://localhost:8080/sessions/stop \
   -H "authorization: Bearer $TOKEN"
+```
+
+Get a one-tap Artemis pairing link:
+
+```bash
+curl -X POST http://localhost:8080/pairing/link \
+  -H "authorization: Bearer $TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"name":"Pixel"}'
+# {"link":"art://<vm-public-ip>:47989?pin=1234&passphrase=...&name=...","expiresInSeconds":180,...}
 ```
 
 Submit Artemis PIN:

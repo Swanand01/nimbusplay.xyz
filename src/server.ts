@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { z } from 'zod';
 import {
   listApolloClients,
+  requestApolloOtp,
   requireDefaultApolloCredentials,
   submitApolloPin,
   updateApolloCredentials,
@@ -25,6 +26,14 @@ const pairingPinSchema = z.object({
   pin: z.string().regex(/^\d{4}$/),
   name: z.string().min(1).max(80).default('Artemis')
 });
+
+const pairingLinkSchema = z.object({
+  name: z.string().min(1).max(80).default('Artemis')
+});
+
+// Apollo's pairing port is its Web UI/API port minus one (47990 -> 47989).
+const APOLLO_PAIRING_PORT_OFFSET = -1;
+const APOLLO_OTP_TTL_SECONDS = 180;
 
 const app = Fastify({ logger: true });
 const store = new Store();
@@ -316,6 +325,50 @@ app.post('/pairing/pin', async (request, reply) => {
     return {
       status: result.status === true,
       apollo: result
+    };
+  } catch (err: unknown) {
+    request.log.error(err);
+    return reply.code(502).send({
+      error: err instanceof Error ? err.message : String(err)
+    });
+  }
+});
+
+// One-tap pairing for Artemis: returns an art:// link that adds the user's VM and
+// pairs with a one-time PIN. Apollo is reached over the private IP; the link uses the
+// public IP the client streams to.
+app.post('/pairing/link', async (request, reply) => {
+  let userId: string;
+  try {
+    userId = await getAuthenticatedUserId(request);
+  } catch {
+    return authError(reply);
+  }
+
+  const body = pairingLinkSchema.parse(request.body ?? {});
+
+  try {
+    const ready = await getReadySessionForApollo(userId);
+    if (!ready.apolloHost || !ready.session?.artemisHost) {
+      return reply.code(409).send({ error: ready.error ?? 'VM is not ready for pairing' });
+    }
+
+    const apolloCredentials = await ensureVmApolloCredentials(userId, ready.apolloHost);
+    const passphrase = randomBytes(4).toString('hex');
+    const { otp, hostName } = await requestApolloOtp(ready.apolloHost, apolloCredentials, passphrase, body.name);
+
+    const port = config.apollo.apiPort + APOLLO_PAIRING_PORT_OFFSET;
+    // encodeURIComponent, not URLSearchParams: Android's Uri doesn't decode '+' as a space.
+    const query = Object.entries({ pin: otp, passphrase, name: hostName ?? 'Cloud PC' })
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    return {
+      link: `art://${ready.session.artemisHost}:${port}?${query}`,
+      host: ready.session.artemisHost,
+      port,
+      pin: otp,
+      passphrase,
+      expiresInSeconds: APOLLO_OTP_TTL_SECONDS
     };
   } catch (err: unknown) {
     request.log.error(err);

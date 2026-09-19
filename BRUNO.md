@@ -67,6 +67,7 @@ Requests:
 ```text
 POST {{BASE_URL}}/sessions/start
 GET  {{BASE_URL}}/sessions/current
+POST {{BASE_URL}}/pairing/link
 POST {{BASE_URL}}/pairing/pin
 GET  {{BASE_URL}}/pairing/clients
 POST {{BASE_URL}}/sessions/stop

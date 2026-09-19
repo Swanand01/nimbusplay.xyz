@@ -24,6 +24,13 @@ export type ApolloClient = {
   always_use_virtual_display?: boolean;
 };
 
+type ApolloOtpResponse = {
+  status?: boolean;
+  otp?: string;
+  name?: string;
+  message?: string;
+};
+
 type ApolloClientsResponse = {
   status?: boolean;
   named_certs?: ApolloClient[];
@@ -242,6 +249,29 @@ export async function listApolloClients(host: string, credentials: ApolloCredent
   );
 
   return clientsResponse.body.named_certs ?? [];
+}
+
+// Creates a one-time pairing PIN (valid ~3 minutes). A client pairs with it plus the
+// passphrase, e.g. via an Artemis art:// link, without anyone typing a PIN into Apollo.
+export async function requestApolloOtp(
+  host: string,
+  credentials: ApolloCredentials,
+  passphrase: string,
+  deviceName: string
+): Promise<{ otp: string; hostName?: string }> {
+  const authCookie = await loginToApollo(host, credentials);
+  const response = await postApollo<ApolloOtpResponse>(
+    host,
+    '/api/otp',
+    { passphrase, deviceName },
+    { cookie: authCookie }
+  );
+
+  if (response.body.status !== true || !response.body.otp) {
+    throw new Error(response.body.message || 'Apollo did not return an OTP');
+  }
+
+  return { otp: response.body.otp, hostName: response.body.name };
 }
 
 export async function submitApolloPin(
