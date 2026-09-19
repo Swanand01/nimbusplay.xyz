@@ -38,12 +38,10 @@ export const config = {
   },
   aws: {
     region: required('AWS_REGION'),
-    amiId: required('AWS_AMI_ID'),
-    instanceType: required('AWS_INSTANCE_TYPE'),
-    keyName: required('AWS_KEY_NAME'),
-    securityGroupId: required('AWS_SECURITY_GROUP_ID'),
-    iamInstanceProfileName: process.env.AWS_IAM_INSTANCE_PROFILE_NAME || undefined,
-    subnetId: process.env.AWS_SUBNET_ID || undefined,
+    // AMI, instance type, subnet, security group and instance profile come from this
+    // launch template (infra/terraform/gaming.tf).
+    launchTemplateId: required('AWS_LAUNCH_TEMPLATE_ID'),
+    // Must match the launch template's subnet AZ: game volumes are AZ-bound.
     availabilityZone: required('AWS_AVAILABILITY_ZONE'),
     gameVolumeSizeGb: numberFromEnv('GAME_VOLUME_SIZE_GB', 140),
     gameVolumeType: process.env.GAME_VOLUME_TYPE ?? 'gp3',

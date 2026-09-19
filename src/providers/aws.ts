@@ -11,7 +11,6 @@ import {
   StartInstancesCommand,
   StopInstancesCommand,
   VolumeType,
-  _InstanceType,
   waitUntilInstanceRunning,
   waitUntilVolumeAvailable,
   waitUntilVolumeInUse
@@ -106,15 +105,9 @@ export class AwsProvider implements CloudProvider {
     }
 
     const run = await this.ec2.send(new RunInstancesCommand({
-      ImageId: config.aws.amiId,
-      InstanceType: config.aws.instanceType as _InstanceType,
-      KeyName: config.aws.keyName,
+      LaunchTemplate: { LaunchTemplateId: config.aws.launchTemplateId, Version: '$Default' },
       MinCount: 1,
       MaxCount: 1,
-      SecurityGroupIds: [config.aws.securityGroupId],
-      SubnetId: config.aws.subnetId,
-      IamInstanceProfile: config.aws.iamInstanceProfileName ? { Name: config.aws.iamInstanceProfileName } : undefined,
-      Placement: { AvailabilityZone: config.aws.availabilityZone },
       TagSpecifications: [
         {
           ResourceType: 'instance',

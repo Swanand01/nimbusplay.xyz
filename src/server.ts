@@ -86,6 +86,23 @@ async function ensureVmApolloCredentials(userId: string, apolloHost: string): Pr
   return rotatedCredentials;
 }
 
+// Serializes /sessions/start per user so concurrent requests can't launch two VMs.
+// In-process only: the backend runs as a single process.
+const startLocks = new Map<string, Promise<unknown>>();
+
+async function withStartLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = startLocks.get(userId) ?? Promise.resolve();
+  const current = previous.catch(() => undefined).then(fn);
+  startLocks.set(userId, current);
+  try {
+    return await current;
+  } finally {
+    if (startLocks.get(userId) === current) {
+      startLocks.delete(userId);
+    }
+  }
+}
+
 async function startSessionInBackground(userId: string, sessionId: string): Promise<void> {
   const user = await store.ensureUser(userId);
   const session = await store.getSession(sessionId);
@@ -241,20 +258,23 @@ app.post('/sessions/start', async (request, reply) => {
 
   await store.ensureUser(userId);
 
-  const existing = await store.getCurrentSession(userId);
-  if (existing && existing.status !== 'failed') {
-    return existing;
-  }
+  const result = await withStartLock(userId, async () => {
+    const existing = await store.getCurrentSession(userId);
+    if (existing) {
+      return { session: existing, created: false };
+    }
 
-  const readySession = await createReadySessionForRunningVm(userId);
-  if (readySession) {
-    return readySession;
-  }
+    const readySession = await createReadySessionForRunningVm(userId);
+    if (readySession) {
+      return { session: readySession, created: false };
+    }
 
-  const session = await store.createSession(userId);
-  void startSessionInBackground(userId, session.id);
+    const session = await store.createSession(userId);
+    void startSessionInBackground(userId, session.id);
+    return { session, created: true };
+  });
 
-  return reply.code(202).send(session);
+  return result.created ? reply.code(202).send(result.session) : result.session;
 });
 
 app.get('/sessions/current', async (request, reply) => {

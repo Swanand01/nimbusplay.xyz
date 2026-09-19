@@ -44,7 +44,7 @@ POST /sessions/stop
 
 The user's game disk is persistent. The EC2 VM is persistent and should normally be stopped, not terminated.
 
-Important AWS rule: an EBS volume can only attach to an EC2 instance in the same Availability Zone. Keep `AWS_SUBNET_ID` and `AWS_AVAILABILITY_ZONE` aligned.
+Important AWS rule: an EBS volume can only attach to an EC2 instance in the same Availability Zone. `AWS_AVAILABILITY_ZONE` must match the launch template's subnet AZ (both come from Terraform).
 
 ## Run Locally
 

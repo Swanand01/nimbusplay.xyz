@@ -30,6 +30,7 @@ enterprise hardening.
 | `security.tf` | `gaming-vm` and `backend` security groups |
 | `iam.tf` | Gaming VM role/profile, backend role/profile |
 | `backend.tf` | Backend EC2 + Elastic IP, deploy S3 bucket |
+| `gaming.tf` | Gaming VM launch template |
 | `outputs.tf` | Values the backend `.env` needs |
 
 ## Network
@@ -44,7 +45,7 @@ enterprise hardening.
 `gaming-vm`:
 - Ingress from `0.0.0.0/0`: TCP 47984, 47989, 48010; UDP 47998-48000.
 - Ingress TCP 47990 from the `backend` SG only.
-- No RDP/SSH ingress (admin access via SSM port forwarding).
+- No RDP/SSH ingress (add a temporary RDP rule in the console when needed).
 - Egress: all.
 
 `backend`:
@@ -89,24 +90,31 @@ Backend role (`cloud-gaming-backend`):
 
 ## Backend config changes
 
-- `.env` values come from Terraform outputs: `AWS_AMI_ID`,
-  `AWS_SECURITY_GROUP_ID`, `AWS_SUBNET_ID`, `AWS_AVAILABILITY_ZONE`,
-  `AWS_IAM_INSTANCE_PROFILE_NAME`.
+- VMs launch from a Terraform-managed launch template (`gaming.tf`: AMI,
+  instance type, subnet, security group, instance profile, tags). The backend
+  needs only `AWS_LAUNCH_TEMPLATE_ID` and `AWS_AVAILABILITY_ZONE` (for volumes).
 - `APOLLO_API_USE_PRIVATE_IP=true`.
-- `AWS_KEY_NAME` becomes optional (VMs launch without a key pair; admin via SSM).
-- Clear stored Apollo credentials when a user's VM is replaced (new VM boots
-  with the AMI's default Apollo password).
+- No key pair on VMs.
+- Per-user lock on `/sessions/start` so concurrent requests can't launch two VMs.
 
-## AMI updates (`infra/scripts/ami-builder.sh`)
+## VM lifecycle rule
 
-- `start`: launch a builder from the current AMI in the public subnet with the
-  gaming VM profile; print the SSM port-forward command for RDP.
-- `bake <instance-id> <name>`: `create-image`, wait until available, print ID.
-- `cleanup <instance-id>`: terminate the builder.
-- Then update `gaming_ami_id` / `AWS_AMI_ID`.
+One VM per user, always the same VM. VMs are stopped, never terminated or
+replaced. A new AMI therefore only applies to users who don't have a VM yet;
+existing VMs are updated in place (SSM/RDP) if needed.
+
+## AMI updates
+
+Manual via the EC2 console: launch from the current AMI, RDP in, change,
+Create image, terminate. Then update `gaming_ami_id` and `terraform apply` (updates the launch template; no backend change). Only users
+without a VM get the new image (see VM lifecycle rule).
+
+## Admin access
+
+No RDP/SSH rules by default. Add a temporary TCP 3389 rule for your IP in the
+console when needed and remove it afterwards.
 
 ## Follow-ups (not in this change)
 
 - Set Apollo `origin_web_ui_allowed = lan` in the next AMI bake.
-- Verify SSM Agent runs on the gaming AMI (first builder launch will show it).
 - Old account cleanup (VM, volume, EIP, AMI, root access keys).
