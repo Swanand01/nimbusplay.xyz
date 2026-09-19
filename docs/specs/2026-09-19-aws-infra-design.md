@@ -12,7 +12,7 @@ enterprise hardening.
 
 ## Out of Terraform
 
-- **Gaming AMI**: `ami-03ac585d0f18ea3db` (copied from the old account). Passed
+- **Gaming AMI**: `ami-0fcf262c1e85192a8` (baked 2026-09-19 from the copied image: Apollo a7eb5e9, Steam signed out, no paired devices). Passed
   in as a variable so `terraform destroy` can never delete it. Updated by
   baking a new AMI from a builder VM (see "AMI updates").
 - **Per-user VMs, game volumes, Elastic IPs**: created at runtime by the
