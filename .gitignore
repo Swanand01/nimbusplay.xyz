@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+data/
+
+prisma/data/
+*.db
+*.db-journal
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log

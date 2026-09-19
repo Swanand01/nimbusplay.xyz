@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id
+  passwordHash String?
+  createdAt    DateTime     @default(now())
+  vm           GamingVm?
+  volume       GameVolume?
+  sessions     Session[]
+}
+
+model GamingVm {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  provider              String
+  region                String
+  availabilityZone      String?
+  instanceId            String   @unique
+  instanceType          String?
+  amiId                 String?
+  securityGroupId       String?
+  subnetId              String?
+  keyName               String?
+  elasticIp             String?
+  privateIp             String?
+  elasticIpAllocationId String?
+  apolloUsername        String?
+  apolloPassword        String?
+  apolloCredentialsRotatedAt DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GameVolume {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  provider         String
+  region           String
+  availabilityZone String
+  volumeId         String   @unique
+  sizeGb           Int
+  volumeType       String
+  deviceName       String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String    @id
+  userId       String
+  provider     String
+  status       String
+  instanceId   String?
+  publicIp     String?
+  privateIp    String?
+  artemisHost  String?
+  gameVolumeId String?
+  error        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  stoppedAt    DateTime?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+}
