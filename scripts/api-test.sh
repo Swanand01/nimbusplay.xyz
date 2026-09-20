@@ -45,10 +45,15 @@ register() { # register EMAIL PASSWORD -> echoes token
 }
 
 # ---------------------------------------------------------------- fast checks
+if [ "${1:-}" = "--cleanup" ]; then
+  SKIP_TESTS=1
+fi
+
 USER_A="test+${RUN_ID}a@cloud-gaming.test"
 USER_B="test+${RUN_ID}b@cloud-gaming.test"
 PW='TestPassword123'
 
+if [ -z "${SKIP_TESTS:-}" ]; then
 section "Health"
 req GET /health; expect_status 200 "GET /health returns 200"
 [ "$(printf '%s' "$BODY" | jq -r .ok)" = true ] && ok "health body is {ok:true}" || bad "health body is {ok:true}" "$BODY"
@@ -88,6 +93,8 @@ section "User isolation"
 TOKEN_B=$(register "$USER_B" "$PW"); [ -n "$TOKEN_B" ] && ok "second user registers" || bad "second user registers" "$BODY"
 req GET /me "$TOKEN_B"; [ "$(printf '%s' "$BODY" | jq -r '.id // .userId // empty')" = "$USER_B" ] && ok "/me returns the caller's own identity" || bad "/me returns the caller's own identity" "$BODY"
 req GET /sessions/current "$TOKEN_B"; expect_status 404 "user B has no session of their own"
+
+fi   # end fast checks
 
 # ---------------------------------------------------------------- VM checks
 if [ "${1:-}" = "--with-vm" ]; then
