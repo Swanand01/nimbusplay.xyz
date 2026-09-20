@@ -12,6 +12,14 @@ resource "aws_launch_template" "gaming_vm" {
     name = aws_iam_instance_profile.gaming_vm.name
   }
 
+  # Require IMDSv2 so code running on the VM can't be tricked into leaking the
+  # instance's AWS credentials through a plain metadata fetch.
+  metadata_options {
+    http_tokens                 = "required"
+    http_endpoint               = "enabled"
+    http_put_response_hop_limit = 1
+  }
+
   network_interfaces {
     subnet_id                   = aws_subnet.public.id
     security_groups             = [aws_security_group.gaming_vm.id]
