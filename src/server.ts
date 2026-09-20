@@ -46,8 +46,12 @@ app.setErrorHandler((error, request, reply) => {
     return reply.code(400).send({ error: field ? `${field}: ${issue.message}` : issue.message });
   }
 
-  request.log.error(error);
   const statusCode = error.statusCode ?? 500;
+  if (statusCode >= 500) {
+    request.log.error(error);
+  } else {
+    request.log.info({ err: error.message }, 'client error');
+  }
   return reply.code(statusCode).send({
     error: statusCode >= 500 ? 'Internal Server Error' : error.message
   });

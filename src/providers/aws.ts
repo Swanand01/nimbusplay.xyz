@@ -168,8 +168,9 @@ export class AwsProvider implements CloudProvider {
     // when a user restarts right after stopping.
     const current = await this.describeInstance(instanceId);
     if (current.state === 'stopping') {
+      // Windows shutdown on these VMs regularly needs more than five minutes.
       await waitUntilInstanceStopped(
-        { client: this.ec2, maxWaitTime: 300 },
+        { client: this.ec2, maxWaitTime: 600 },
         { InstanceIds: [instanceId] }
       );
     }
