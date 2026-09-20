@@ -154,7 +154,7 @@ export class Store {
     const session = await prisma.session.findFirst({
       where: {
         userId,
-        status: { in: ['starting', 'ready', 'stopping'] }
+        status: { in: ['starting', 'ready', 'stopping', 'failed'] }
       },
       orderBy: { createdAt: 'desc' }
     });

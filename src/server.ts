@@ -286,7 +286,7 @@ app.post('/sessions/start', async (request, reply) => {
 
   const result = await withStartLock(userId, async () => {
     const existing = await store.getCurrentSession(userId);
-    if (existing) {
+    if (existing && existing.status !== 'failed') {
       return { session: existing, created: false };
     }
 

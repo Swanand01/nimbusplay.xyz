@@ -12,6 +12,7 @@ import {
   StopInstancesCommand,
   VolumeType,
   waitUntilInstanceRunning,
+  waitUntilInstanceStopped,
   waitUntilVolumeAvailable,
   waitUntilVolumeInUse
 } from '@aws-sdk/client-ec2';
@@ -163,6 +164,16 @@ export class AwsProvider implements CloudProvider {
   }
 
   private async startExistingInstance(user: UserRecord, instanceId: string, gameVolumeId: string): Promise<StartResult> {
+    // EC2 rejects StartInstances while the VM is still stopping, which is easy to hit
+    // when a user restarts right after stopping.
+    const current = await this.describeInstance(instanceId);
+    if (current.state === 'stopping') {
+      await waitUntilInstanceStopped(
+        { client: this.ec2, maxWaitTime: 300 },
+        { InstanceIds: [instanceId] }
+      );
+    }
+
     await this.ec2.send(new StartInstancesCommand({
       InstanceIds: [instanceId]
     }));

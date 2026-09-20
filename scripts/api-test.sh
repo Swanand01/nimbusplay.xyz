@@ -91,7 +91,7 @@ req GET /sessions/current "$TOKEN_B"; expect_status 404 "user B has no session o
 
 # ---------------------------------------------------------------- VM checks
 if [ "${1:-}" = "--with-vm" ]; then
-  head "Full flow with a real VM (user A)"
+  section "Full flow with a real VM (user A)"
   req POST /sessions/start "$TOKEN_A" '{}'; expect_status 202 "first start returns 202 accepted"
   SESSION_ID=$(printf '%s' "$BODY" | jq -r .id)
 
@@ -137,7 +137,7 @@ if [ "${1:-}" = "--with-vm" ]; then
       printf '%s' "$OUT" | grep -qi true && ok "D:\\SteamLibrary exists" || bad "D:\\SteamLibrary exists" "$OUT"
     fi
 
-    head "Stop and restart"
+    section "Stop and restart"
     req POST /sessions/stop "$TOKEN_A"; expect_status 200 "stop returns 200"
     [ "$(printf '%s' "$BODY" | jq -r .status)" = stopped ] && ok "session status is stopped" || bad "session status is stopped" "$BODY"
     aws ec2 wait instance-stopped --instance-ids "$INSTANCE_ID" && ok "VM actually stopped in AWS" || bad "VM actually stopped in AWS"
@@ -154,7 +154,7 @@ if [ "${1:-}" = "--with-vm" ]; then
     [ "$(printf '%s' "$BODY" | jq -r .instanceId)" = "$INSTANCE_ID" ] && ok "restart reuses the same VM" || bad "restart reuses the same VM" "$BODY"
     [ "$(printf '%s' "$BODY" | jq -r .publicIp)" = "$PUBLIC_IP" ] && ok "restart keeps the same public IP" || bad "restart keeps the same public IP" "$BODY"
 
-    head "Known gap: start while stopping"
+    section "Known gap: start while stopping"
     req POST /sessions/stop "$TOKEN_A" >/dev/null
     req POST /sessions/start "$TOKEN_A" '{}'
     printf '  polling'
@@ -173,7 +173,7 @@ fi
 
 # ---------------------------------------------------------------- cleanup
 if [ "${1:-}" = "--cleanup" ]; then
-  head "Cleaning up AWS resources of test users"
+  section "Cleaning up AWS resources of test users"
   for ID in $(aws ec2 describe-instances --filters 'Name=tag:UserId,Values=test+*' Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId' --output text); do
     aws ec2 terminate-instances --instance-ids "$ID" >/dev/null && echo "  terminated $ID"
     aws ec2 wait instance-terminated --instance-ids "$ID"
