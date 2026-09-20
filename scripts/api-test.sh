@@ -181,14 +181,14 @@ fi
 # ---------------------------------------------------------------- cleanup
 if [ "${1:-}" = "--cleanup" ]; then
   section "Cleaning up AWS resources of test users"
-  for ID in $(aws ec2 describe-instances --filters 'Name=tag:UserId,Values=test+*' Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId' --output text); do
+  for ID in $(aws ec2 describe-instances --filters 'Name=tag:UserId,Values=test+*,sectest+*' Name=instance-state-name,Values=pending,running,stopping,stopped --query 'Reservations[].Instances[].InstanceId' --output text); do
     aws ec2 terminate-instances --instance-ids "$ID" >/dev/null && echo "  terminated $ID"
     aws ec2 wait instance-terminated --instance-ids "$ID"
   done
-  for V in $(aws ec2 describe-volumes --filters 'Name=tag:UserId,Values=test+*' Name=status,Values=available --query 'Volumes[].VolumeId' --output text); do
+  for V in $(aws ec2 describe-volumes --filters 'Name=tag:UserId,Values=test+*,sectest+*' Name=status,Values=available --query 'Volumes[].VolumeId' --output text); do
     aws ec2 delete-volume --volume-id "$V" >/dev/null && echo "  deleted volume $V"
   done
-  for A in $(aws ec2 describe-addresses --filters 'Name=tag:UserId,Values=test+*' --query 'Addresses[].AllocationId' --output text); do
+  for A in $(aws ec2 describe-addresses --filters 'Name=tag:UserId,Values=test+*,sectest+*' --query 'Addresses[].AllocationId' --output text); do
     aws ec2 release-address --allocation-id "$A" >/dev/null && echo "  released EIP $A"
   done
   echo "  (test user rows stay in the backend database)"
