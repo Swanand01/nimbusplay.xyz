@@ -2,6 +2,21 @@
 
 Priority list for turning the current MVP into a safer, more reliable cloud gaming service.
 
+## Done (2026-09-20): Game Volume Auto-Setup
+
+The per-user 140 GB volume is attached as `/dev/sdf` but arrives raw, so Windows never
+mounted it. The gaming AMI now carries an EC2Launch v2 `initializeVolume` task
+(`infra/ami/agent-config.yml`, copied to
+`C:\ProgramData\Amazon\EC2Launch\config\agent-config.yml`):
+
+- Only `/dev/sdf` is listed, so the g4dn instance-store NVMe is never touched.
+- EC2Launch initializes a volume only when it detects it as empty, and applies the drive
+  letter either way. Verified on a real VM: an empty volume is formatted NTFS as `D:`
+  (label `Games`); a volume with data is skipped and keeps its data across reboots.
+- A follow-up `executeScript` task recreates `D:\SteamLibrary` when missing;
+  the AMI's Steam already lists that path in `libraryfolders.vdf`.
+- The device name must be `/dev/sdf` as reported by `ebsnvme-id.exe`, not `xvdf`.
+
 ## 1. Lock Down Apollo Web UI/API Access
 
 Current state: Apollo Web UI/API on `47990` can be opened from the internet if `origin_web_ui_allowed = wan` and the security group allows it.

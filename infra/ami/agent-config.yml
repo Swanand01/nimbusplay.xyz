@@ -1,0 +1,56 @@
+version: "1.0"
+config:
+  - stage: boot
+    tasks:
+      - task: extendRootPartition
+  - stage: preReady
+    tasks:
+      - task: activateWindows
+        inputs:
+          activation:
+            type: amazon
+      - task: setDnsSuffix
+        inputs:
+          suffixes:
+            - $REGION.ec2-utilities.amazonaws.com
+      - task: setAdminAccount
+        inputs:
+          password:
+            type: random
+      - task: setWallpaper
+        inputs:
+          attributes:
+            - hostName
+            - instanceId
+            - privateIpAddress
+            - publicIpAddress
+            - ipv6Address
+            - instanceSize
+            - availabilityZone
+            - architecture
+          path: C:\Windows\Web\Wallpaper\Windows\img0.jpg
+  - stage: postReady
+    tasks:
+      - task: startSsm
+      # The user's game volume becomes D:. The device name must match what
+      # ebsnvme-id.exe reports on this AMI ("/dev/sdf"), not the "xvdf" form.
+      # EC2Launch only initializes a volume it detects as empty, so a disk that already
+      # holds the user's games is never reformatted; the drive letter is applied either
+      # way. The instance-store NVMe is untouched because only xvdf is listed.
+      - task: initializeVolume
+        inputs:
+          initialize: devices
+          devices:
+            - device: /dev/sdf
+              letter: D
+              name: Games
+              partition: gpt
+      # Steam's library at D:\SteamLibrary is already registered in the AMI's
+      # libraryfolders.vdf; just make sure the folder exists on a freshly formatted volume.
+      - task: executeScript
+        inputs:
+          - frequency: always
+            type: powershell
+            runAs: localSystem
+            content: |-
+              if (Test-Path D:\) { New-Item -ItemType Directory -Force -Path D:\SteamLibrary | Out-Null }

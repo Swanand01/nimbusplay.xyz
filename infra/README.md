@@ -49,6 +49,12 @@ Shell on the backend host: `aws ssm start-session --target <backend_instance_id>
 
 ## Gaming AMI
 
+`infra/ami/agent-config.yml` is the EC2Launch v2 config baked into the AMI at
+`C:\ProgramData\Amazon\EC2Launch\config\agent-config.yml`. It makes the user's game
+volume (`/dev/sdf`) come up as `D:` on every boot: formatted on first use, only ever
+skipped-and-remounted afterwards, and it keeps `D:\SteamLibrary` in place. Validate
+changes on the builder with `EC2Launch.exe validate` before baking.
+
 Not managed by Terraform. To update it: launch a VM from the current AMI in the
 EC2 console, RDP in, make changes, then **Actions → Image and templates →
 Create image**, and terminate the VM. Then set `gaming_ami_id` in
