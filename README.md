@@ -146,6 +146,18 @@ curl http://localhost:8080/pairing/clients \
   -H "authorization: Bearer $TOKEN"
 ```
 
+## Tests
+
+```bash
+scripts/api-test.sh              # auth/validation/session/pairing checks, no AWS resources
+scripts/api-test.sh --with-vm    # also starts a real VM: full flow, restart, volume, pairing link
+scripts/api-test.sh --cleanup    # delete VMs/volumes/EIPs left behind by test users
+```
+
+Runs against `BASE_URL` (defaults to the deployed backend from terraform output).
+`--with-vm` takes 10-15 minutes and creates real AWS resources; always finish with
+`--cleanup`, and note each test user holds an Elastic IP (account limit is 5).
+
 ## Apollo Pairing Details
 
 Apollo's current code uses Web UI cookie auth for protected endpoints. The backend handles this internally:
