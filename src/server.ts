@@ -36,6 +36,23 @@ const APOLLO_PAIRING_PORT_OFFSET = -1;
 const APOLLO_OTP_TTL_SECONDS = 180;
 
 const app = Fastify({ logger: true });
+
+// Schema violations are client errors: answer 400 with the first message instead of
+// letting Fastify turn the ZodError into a 500 that dumps the whole schema.
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof z.ZodError) {
+    const issue = error.issues[0];
+    const field = issue.path.join('.');
+    return reply.code(400).send({ error: field ? `${field}: ${issue.message}` : issue.message });
+  }
+
+  request.log.error(error);
+  const statusCode = error.statusCode ?? 500;
+  return reply.code(statusCode).send({
+    error: statusCode >= 500 ? 'Internal Server Error' : error.message
+  });
+});
+
 const store = new Store();
 const cloud = new AwsProvider();
 
