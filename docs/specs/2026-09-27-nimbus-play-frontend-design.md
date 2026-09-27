@@ -70,13 +70,13 @@ desktop-first.
 
 ## Instructions section
 
-Always visible when logged out or idle, collapsed once a session is running:
+Three steps, shown when logged out or idle and hidden once a session is running:
 
-1. Install Artemis from `github.com/Swanand01/moonlight-android/releases/latest`
-   (the page links straight to the APK), and allow installs from the browser.
-2. Press START GAMING and wait for READY.
-3. Press CONNECT; Artemis opens and pairs itself.
-4. Press STOP when finished, so the VM isn't left running.
+1. First time here? Install the Artemis app on your phone (links to the release).
+2. Press Start gaming, then Connect when your PC is ready.
+3. Press Stop when you're finished, so your PC isn't left running.
+
+Connect and Stop explain themselves at the moment they appear, so the steps stay short.
 
 ## Visual language
 

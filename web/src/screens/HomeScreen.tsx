@@ -43,8 +43,7 @@ export function HomeScreen({
         {status === 'failed' && session?.error && <p className="text-sm text-gray-300">{session.error}</p>}
         {status === 'starting' && (
           <p className="text-sm text-gray-400">
-            Your PC is starting. This takes a few minutes the first time. You can leave this page open;
-            Stop appears once it&rsquo;s ready.
+            Your PC is starting. This takes a few minutes the first time. You can leave this page open.
           </p>
         )}
         {status === 'stopped' && (
