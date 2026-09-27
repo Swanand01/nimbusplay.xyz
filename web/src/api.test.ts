@@ -24,6 +24,18 @@ describe('api', () => {
     expect(JSON.stringify(localStorage)).not.toContain('secret-token');
   });
 
+  it('sends no content-type when there is no body', async () => {
+    // Fastify rejects an empty body that claims to be JSON.
+    const fetchMock = mockFetch(200, { id: 's1', status: 'stopped' });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.stopSession();
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.body).toBeUndefined();
+    expect(init.headers['content-type']).toBeUndefined();
+  });
+
   it('returns null when the user has no session', async () => {
     vi.stubGlobal('fetch', mockFetch(404, { error: 'No active session' }));
     await expect(api.currentSession()).resolves.toBeNull();

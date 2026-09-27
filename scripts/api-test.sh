@@ -118,6 +118,13 @@ curl -sS -m 20 -o /dev/null -H "authorization: Bearer $STOLEN" -X POST "$BASE_UR
 CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -H "authorization: Bearer $STOLEN" "$BASE_URL/me")
 [ "$CODE" = 401 ] && ok "a replayed token is rejected after logout" || bad "a replayed token is rejected after logout" "HTTP $CODE"
 
+section "Endpoints that take no body"
+# The browser sends these with no body; Fastify 400s if content-type claims JSON.
+for EP in /sessions/stop /sessions/start /auth/logout; do
+  CODE=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST "$BASE_URL$EP" -H "authorization: Bearer $TOKEN_A" 2>/dev/null)
+  [ "$CODE" != 400 ] && ok "POST $EP without a body is accepted (HTTP $CODE)" || bad "POST $EP without a body is accepted" "HTTP 400"
+done
+
 section "Static frontend"
 CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$BASE_URL/")
 [ "$CODE" = 200 ] && ok "GET / serves the app" || bad "GET / serves the app" "HTTP $CODE"

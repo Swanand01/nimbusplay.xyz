@@ -31,7 +31,11 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
       ...init,
       // The session lives in an httpOnly cookie, so every call must carry credentials.
       credentials: 'include',
-      headers: { 'content-type': 'application/json', ...(init.headers ?? {}) }
+      // Only claim JSON when there is a body: Fastify rejects an empty body that says
+      // it is JSON, which broke Stop and Log out.
+      headers: init.body === undefined
+        ? { ...(init.headers ?? {}) }
+        : { 'content-type': 'application/json', ...(init.headers ?? {}) }
     });
   } catch {
     throw new ApiError(0, "Couldn't reach the server");
@@ -66,7 +70,7 @@ export const api = {
       throw error;
     }
   },
-  startSession: () => request<Session>('/sessions/start', { method: 'POST', body: '{}' }),
+  startSession: () => request<Session>('/sessions/start', { method: 'POST' }),
   stopSession: () => request<Session>('/sessions/stop', { method: 'POST' }),
   pairingLink: (name: string) =>
     request<PairingLink>('/pairing/link', { method: 'POST', body: JSON.stringify({ name }) })
