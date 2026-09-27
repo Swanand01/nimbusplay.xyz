@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type Session } from '../api';
+import { api, ApiError, type PairingLink, type Session } from '../api';
 import { usePolling } from '../usePolling';
 
 export type AuthState = 'unknown' | 'signed-out' | 'signed-in' | 'unreachable';

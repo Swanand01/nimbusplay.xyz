@@ -1,4 +1,4 @@
-import type { Session } from '../api';
+import type { PairingLink, Session } from '../api';
 import { Button } from '../components/Button';
 import { Instructions } from '../components/Instructions';
 import { Panel } from '../components/Panel';
