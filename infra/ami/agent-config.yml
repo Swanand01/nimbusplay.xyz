@@ -48,11 +48,17 @@ config:
               name: Games
               partition: gpt
       # Steam's library at D:\SteamLibrary is already registered in the AMI's
-      # libraryfolders.vdf; just make sure the folder exists on a freshly formatted volume.
+      # libraryfolders.vdf, so Steam never runs its own "add library" step and never
+      # creates steamapps. Without it Steam refuses to install: "Library folder
+      # D:\SteamLibrary\steamapps is not writable (Disk write failure)".
       - task: executeScript
         inputs:
           - frequency: always
             type: powershell
             runAs: localSystem
             content: |-
-              if (Test-Path D:\) { New-Item -ItemType Directory -Force -Path D:\SteamLibrary | Out-Null }
+              if (Test-Path D:\) {
+                foreach ($dir in 'D:\SteamLibrary\steamapps\common', 'D:\SteamLibrary\steamapps\downloading', 'D:\SteamLibrary\steamapps\temp', 'D:\SteamLibrary\steamapps\workshop') {
+                  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+                }
+              }

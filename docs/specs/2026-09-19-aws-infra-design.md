@@ -12,7 +12,7 @@ enterprise hardening.
 
 ## Out of Terraform
 
-- **Gaming AMI**: `ami-0b5913a08c8b2ff4f` (baked 2026-09-20: Apollo a7eb5e9, clean of personal logins/paired devices, EC2Launch initializeVolume for the D: game volume). Passed
+- **Gaming AMI**: `ami-057c5c1caf39fb32b` (baked 2026-09-20: Apollo a7eb5e9, clean of personal logins/paired devices, EC2Launch initializeVolume for the D: game volume). Passed
   in as a variable so `terraform destroy` can never delete it. Updated by
   baking a new AMI from a builder VM (see "AMI updates").
 - **Per-user VMs and game volumes**: created at runtime by the backend. VMs use the
