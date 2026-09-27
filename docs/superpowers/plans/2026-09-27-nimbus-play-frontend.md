@@ -556,7 +556,7 @@ git commit -m "Scaffold the Nimbus Play frontend with its API client"
 - Produces:
   - `<Button variant?: 'primary' | 'danger' | 'ghost'; disabled?: boolean; onClick?: () => void>` — renders a `<button>`, min height 44px.
   - `<Panel title?: string>` — bordered container.
-  - `<StatusLine text: string; tone?: 'neon' | 'amber' | 'magenta'>` — pixel font, blinking cursor.
+  - `<StatusLine text: string; tone?: 'neon' | 'amber' | 'magenta'>` — display font, uppercase, tracked.
 
 - [ ] **Step 1: Write the failing test**
 
