@@ -261,13 +261,13 @@ app.post('/auth/register', async (request, reply) => {
     return reply.code(409).send({ error: 'User already exists' });
   }
 
-  await prisma.user.upsert({
+  const user = await prisma.user.upsert({
     where: { id: email },
     create: { id: email, passwordHash },
     update: { passwordHash }
   });
 
-  const token = createToken(email);
+  const token = createToken(email, user.tokenVersion);
   setSessionCookie(reply, token);
   return { userId: email, token };
 });
@@ -281,12 +281,21 @@ app.post('/auth/login', async (request, reply) => {
     return authError(reply, 'Invalid email or password');
   }
 
-  const token = createToken(email);
+  const token = createToken(email, user.tokenVersion);
   setSessionCookie(reply, token);
   return { userId: email, token };
 });
 
-app.post('/auth/logout', async (_request, reply) => {
+app.post('/auth/logout', async (request, reply) => {
+  // Bump the user's token version so the token that just logged out stops working,
+  // even if someone kept a copy of it.
+  try {
+    const userId = await getAuthenticatedUserId(request);
+    await prisma.user.update({ where: { id: userId }, data: { tokenVersion: { increment: 1 } } });
+  } catch {
+    // Already signed out, or the token was invalid: clearing the cookie is enough.
+  }
+
   reply.clearCookie(SESSION_COOKIE, { path: '/' });
   return reply.code(204).send();
 });

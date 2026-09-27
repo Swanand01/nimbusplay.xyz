@@ -9,6 +9,7 @@ const scrypt = promisify(scryptCallback);
 type TokenPayload = {
   sub: string;
   exp: number;
+  ver: number;
 };
 
 function base64url(input: Buffer | string): string {
@@ -41,11 +42,12 @@ export async function verifyPassword(password: string, storedHash: string): Prom
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
-export function createToken(userId: string): string {
+export function createToken(userId: string, tokenVersion = 0): string {
   const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const payload: TokenPayload = {
     sub: userId,
-    exp: Math.floor(Date.now() / 1000) + config.auth.tokenTtlSeconds
+    exp: Math.floor(Date.now() / 1000) + config.auth.tokenTtlSeconds,
+    ver: tokenVersion
   };
   const body = base64url(JSON.stringify(payload));
   const signature = sign(`${header}.${body}`);
@@ -89,6 +91,11 @@ export async function getAuthenticatedUserId(request: FastifyRequest): Promise<s
   const user = await prisma.user.findUnique({ where: { id: payload.sub } });
   if (!user) {
     throw new Error('User not found');
+  }
+
+  // Logout bumps tokenVersion, so tokens issued before it no longer verify.
+  if ((payload.ver ?? 0) !== user.tokenVersion) {
+    throw new Error('Token revoked');
   }
 
   return user.id;

@@ -8,7 +8,7 @@ import { Panel } from './components/Panel';
 import { StatusLine } from './components/StatusLine';
 import { usePolling } from './usePolling';
 
-type Auth = 'unknown' | 'signed-out' | 'signed-in';
+type Auth = 'unknown' | 'signed-out' | 'signed-in' | 'unreachable';
 
 const STATUS_TEXT: Record<Session['status'], string> = {
   starting: 'Booting…',
@@ -21,15 +21,22 @@ const STATUS_TEXT: Record<Session['status'], string> = {
 export function App() {
   const [auth, setAuth] = useState<Auth>('unknown');
   const [session, setSession] = useState<Session | null>(null);
+  const [sessionKnown, setSessionKnown] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
       setSession(await api.currentSession());
+      setSessionKnown(true);
       setError(null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
+        // Someone else's session must not stay on screen on a shared phone.
+        setSession(null);
+        setSessionKnown(false);
         setAuth('signed-out');
+        setNotice('Please log in again');
         return;
       }
       // Keep the state we had: a dropped mobile connection shouldn't reset the screen.
@@ -37,12 +44,25 @@ export function App() {
     }
   }, []);
 
-  useEffect(() => {
-    api
-      .me()
-      .then(() => setAuth('signed-in'))
-      .catch(() => setAuth('signed-out'));
+  const checkSignIn = useCallback(async () => {
+    setError(null);
+    try {
+      await api.me();
+      setAuth('signed-in');
+    } catch (err) {
+      // Only an auth failure means signed out; anything else is the server being unreachable.
+      if (err instanceof ApiError && err.status === 401) {
+        setAuth('signed-out');
+        return;
+      }
+      setError(err instanceof ApiError ? err.message : 'Something went wrong');
+      setAuth('unreachable');
+    }
   }, []);
+
+  useEffect(() => {
+    void checkSignIn();
+  }, [checkSignIn]);
 
   useEffect(() => {
     if (auth === 'signed-in') {
@@ -65,12 +85,20 @@ export function App() {
   }
 
   async function signOut() {
+    setError(null);
     try {
       await api.logout();
-    } finally {
-      setSession(null);
-      setAuth('signed-out');
+    } catch (err) {
+      // A 401 means the session is already gone; anything else and we are still signed in,
+      // so don't pretend otherwise on a shared phone.
+      if (!(err instanceof ApiError && err.status === 401)) {
+        setError(err instanceof ApiError ? err.message : 'Something went wrong');
+        return;
+      }
     }
+    setSession(null);
+    setSessionKnown(false);
+    setAuth('signed-out');
   }
 
   if (auth === 'unknown') {
@@ -81,10 +109,44 @@ export function App() {
     );
   }
 
+  if (auth === 'unreachable') {
+    return (
+      <Shell>
+        <Panel>
+          <StatusLine text="Offline" tone="amber" />
+          <p className="text-sm text-gray-300">{error ?? "Couldn't reach the server"}</p>
+          <Button onClick={() => void checkSignIn()}>Retry</Button>
+        </Panel>
+      </Shell>
+    );
+  }
+
   if (auth === 'signed-out') {
     return (
       <Shell>
-        <AuthScreen onSignedIn={() => setAuth('signed-in')} />
+        {notice && <p className="text-sm text-amber">{notice}</p>}
+        <AuthScreen
+          onSignedIn={() => {
+            setNotice(null);
+            setAuth('signed-in');
+          }}
+        />
+      </Shell>
+    );
+  }
+
+  // The first session check hasn't succeeded, so we don't know whether the PC is off.
+  if (!sessionKnown) {
+    return (
+      <Shell>
+        <Panel>
+          <StatusLine text={error ? 'Offline' : 'Checking…'} tone={error ? 'amber' : 'neon'} />
+          {error && <p className="text-sm text-gray-300">{error}</p>}
+          {error && <Button onClick={() => void refresh()}>Retry</Button>}
+        </Panel>
+        <Button variant="ghost" onClick={() => void signOut()}>
+          Log out
+        </Button>
       </Shell>
     );
   }

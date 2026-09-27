@@ -10,6 +10,8 @@ datasource db {
 model User {
   id           String       @id
   passwordHash String?
+  // Bumped on logout so tokens issued before it stop verifying.
+  tokenVersion Int          @default(0)
   createdAt    DateTime     @default(now())
   vm           GamingVm?
   volume       GameVolume?

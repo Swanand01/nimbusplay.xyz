@@ -16,6 +16,8 @@ export function ConnectButton() {
       setPairing(link);
       location.assign(link.link);
     } catch (err) {
+      // Drop the previous code: it is either expired or for a PC that is no longer ready.
+      setPairing(null);
       setError(err instanceof ApiError ? err.message : 'Something went wrong');
     } finally {
       setBusy(false);

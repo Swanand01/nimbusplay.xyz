@@ -109,6 +109,15 @@ CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" "$BASE_URL
 [ "$CODE" = 401 ] && ok "cookie is rejected after logout" || bad "cookie is rejected after logout" "HTTP $CODE"
 rm -f "$COOKIE_JAR"
 
+# A stolen cookie value must stop working after logout, not just disappear from the jar.
+STOLEN=$(curl -sS -m 20 -X POST "$BASE_URL/auth/login" -H 'content-type: application/json' \
+  -d "{\"email\":\"$USER_A\",\"password\":\"$PW\"}" | jq -r .token)
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -H "authorization: Bearer $STOLEN" "$BASE_URL/me")
+[ "$CODE" = 200 ] && ok "fresh token works" || bad "fresh token works" "HTTP $CODE"
+curl -sS -m 20 -o /dev/null -H "authorization: Bearer $STOLEN" -X POST "$BASE_URL/auth/logout"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -H "authorization: Bearer $STOLEN" "$BASE_URL/me")
+[ "$CODE" = 401 ] && ok "a replayed token is rejected after logout" || bad "a replayed token is rejected after logout" "HTTP $CODE"
+
 section "Static frontend"
 CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$BASE_URL/")
 [ "$CODE" = 200 ] && ok "GET / serves the app" || bad "GET / serves the app" "HTTP $CODE"

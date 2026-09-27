@@ -33,6 +33,21 @@ describe('ConnectButton', () => {
     expect(screen.getByText('abcd1234')).toBeInTheDocument();
   });
 
+  it('drops the stale PIN when a later attempt fails', async () => {
+    vi.stubGlobal('location', { assign: vi.fn() });
+    mocked.pairingLink
+      .mockResolvedValueOnce({ link: 'art://1.2.3.4:47989?pin=1234', pin: '1234', passphrase: 'abcd1234', expiresInSeconds: 180 })
+      .mockRejectedValue(new ApiError(409, 'VM is not ready for pairing'));
+
+    render(<ConnectButton />);
+    screen.getByRole('button', { name: /connect/i }).click();
+    expect(await screen.findByText('1234')).toBeInTheDocument();
+
+    screen.getByRole('button', { name: /connect/i }).click();
+    expect(await screen.findByText(/vm is not ready for pairing/i)).toBeInTheDocument();
+    expect(screen.queryByText('1234')).not.toBeInTheDocument();
+  });
+
   it('offers a retry when the link has expired or the VM is not ready', async () => {
     mocked.pairingLink.mockRejectedValue(new ApiError(409, 'VM is not ready for pairing'));
     render(<ConnectButton />);
