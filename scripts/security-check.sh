@@ -36,8 +36,9 @@ printf '%s\n' "$RULES" | awk '$1==3389 || $1==22' | grep -q . && bad "gaming SG:
 
 BRULES=$(aws ec2 describe-security-group-rules --filters "Name=group-id,Values=$BSG" --query 'SecurityGroupRules[?!IsEgress].[FromPort,ToPort,IpProtocol,CidrIpv4]' --output text)
 printf '%s\n' "$BRULES" | awk '$1==22' | grep -q . && bad "backend SG: no SSH rule" "$BRULES" || ok "backend SG: no SSH rule"
-printf '%s\n' "$BRULES" | awk '$1==8080' | grep -q . && ok "backend SG: API port 8080 present" || bad "backend SG: API port 8080 present" "$BRULES"
-printf '%s\n' "$BRULES" | awk '$1==8080 && $4=="0.0.0.0/0"' | grep -q . && warn "backend API is open to the whole internet" "set api_allowed_cidr to your IP if you want it private"
+printf '%s\n' "$BRULES" | awk '$1==443' | grep -q . && ok "backend SG: HTTPS (443) open" || bad "backend SG: HTTPS (443) open" "$BRULES"
+printf '%s\n' "$BRULES" | awk '$1==80' | grep -q . && ok "backend SG: HTTP (80) open for redirect + ACME" || bad "backend SG: HTTP (80) open" "$BRULES"
+printf '%s\n' "$BRULES" | awk '$1==8080' | grep -q . && bad "backend SG: app port 8080 is not public" "8080 is reachable from the internet" || ok "backend SG: app port 8080 is not public"
 
 section "Secrets and storage"
 for P in /cloud-gaming/auth-token-secret /cloud-gaming/apollo-api-password; do
@@ -66,8 +67,26 @@ for EP in "GET /me" "GET /sessions/current" "POST /sessions/start" "POST /sessio
 done
 CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$BASE_URL/health" 2>/dev/null)
 [ "$CODE" = 200 ] && ok "GET /health is public (intended)" || warn "GET /health returned $CODE"
-printf '  note: API is plain HTTP; tokens and passwords travel unencrypted\n'
-WARN=$((WARN+1))
+
+section "Transport"
+case "$BASE_URL" in
+  https://*) ok "API is served over HTTPS" ;;
+  *) bad "API is served over HTTPS" "BASE_URL=$BASE_URL" ;;
+esac
+REDIRECT=$(curl -sS -m 20 -o /dev/null -w '%{http_code} %{redirect_url}' "http://${BASE_URL#https://}/health" 2>/dev/null)
+case "$REDIRECT" in
+  30*\ https://*) ok "HTTP redirects to HTTPS" ;;
+  *) bad "HTTP redirects to HTTPS" "$REDIRECT" ;;
+esac
+COOKIE=$(curl -sS -m 20 -D - -o /dev/null -X POST "$BASE_URL/auth/login" -H 'content-type: application/json' \
+  -d '{"email":"nobody@cloud-gaming.test","password":"not-a-real-password"}' 2>/dev/null | grep -i '^set-cookie' || true)
+ORIGIN_URL=$(terraform -chdir="$ROOT/infra/terraform" output -raw backend_origin_url 2>/dev/null)
+# curl writes 000 and exits non-zero when it never got a response, which is what we want here.
+ORIGIN=$(curl -sS -m 8 -o /dev/null -w '%{http_code}' "$ORIGIN_URL/health" 2>/dev/null | tail -c 3)
+case "$ORIGIN" in
+  000|'') ok "the app port is not reachable from the internet" ;;
+  *) bad "the app port is not reachable from the internet" "HTTP $ORIGIN at $ORIGIN_URL" ;;
+esac
 
 if [ "${1:-}" = "--with-vm" ]; then
   section "Live port probe against a gaming VM"
