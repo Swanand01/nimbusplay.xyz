@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { api, ApiError, type PairingLink } from './api';
-import { Button } from './components/Button';
+import { api, ApiError, type PairingLink } from '../api';
+import { Button } from '../components/Button';
 
 export function ConnectButton() {
   const [pairing, setPairing] = useState<PairingLink | null>(null);

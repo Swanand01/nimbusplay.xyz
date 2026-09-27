@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { api, ApiError } from './api';
-import { Button } from './components/Button';
-import { Panel } from './components/Panel';
+import { api, ApiError } from '../api';
+import { Button } from '../components/Button';
+import { Panel } from '../components/Panel';
 
 export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');

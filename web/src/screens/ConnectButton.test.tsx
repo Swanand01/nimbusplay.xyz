@@ -1,10 +1,10 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConnectButton } from './ConnectButton';
-import { api, ApiError } from './api';
+import { api, ApiError } from '../api';
 
-vi.mock('./api', async () => {
-  const actual = await vi.importActual<typeof import('./api')>('./api');
+vi.mock('../api', async () => {
+  const actual = await vi.importActual<typeof import('../api')>('../api');
   return { ...actual, api: { pairingLink: vi.fn() } };
 });
 
