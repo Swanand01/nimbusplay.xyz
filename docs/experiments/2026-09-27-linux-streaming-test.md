@@ -37,12 +37,16 @@ Measured with a sampler (`/usr/local/bin/stream-sampler`, 5s interval, CSV at
 |---|---|---|---|---|
 | In game (Brawlhalla, 720p) | **8.33 Mbps** avg (peak 9.6) | 21% | 9% | 53% |
 | **Static screen, 3 min, untouched** | **3.98 Mbps, constant** | 1% | 8% | 5% |
+| eFootball, in a match, 720p | 8.8 Mbps avg | 35-42% | 5% | **96-97%, 0% idle** |
 
 - **The game ran under Proton with no fiddling**, and used the GPU (124 MB VRAM).
 - **No dropped frames or encoder overload** in Sunshine's log.
 - **CPU is the constraint, not the GPU.** A light 2D game left the T4 at 21% while the four
   vCPUs sat at 50-87%. If this route is taken, 8 vCPUs (g4dn.2xlarge) matters more than a
   bigger GPU.
+- **The same game is fine on Windows.** eFootball on the Windows AMI, same g4dn.xlarge and
+  same 4 vCPUs, plays normally. Subjective rather than instrumented, but it is the control
+  that matters: the hardware is not the problem, the stack is.
 - **Idle bandwidth confirms the warning.** A completely static screen still pushes 4 Mbps
   (~1.8 GB/hour, ~$0.20/hour). In-game is only twice that. The Windows licence saving is
   ~$0.18/hour, so idle streaming can cancel the entire reason for moving.
@@ -76,6 +80,28 @@ Measured with a sampler (`/usr/local/bin/stream-sampler`, 5s interval, CSV at
 10. **No browser installed** with a minimal XFCE; `snap install firefox`.
 11. **Double-click doesn't work well from a phone.** Set XFCE to single-click, or use a
     trackpad-mode client and a Bluetooth mouse.
+12. **NvFBC dies with "the display server is in modeset" after ~10 minutes idle**, and the
+    client shows "connection terminated", error -1. The cause is `light-locker`, XFCE's
+    default screen locker: it locks by asking LightDM for a greeter, and LightDM answers by
+    starting a **second X server** on VT8. That server takes the DRM modeset, so NvFBC on
+    `:0` can no longer create a capture session. LightDM's log shows
+    `Seat seat0: Creating greeter session` at +606s and +2809s of two runs, each about two
+    minutes before a failure. Restarting Sunshine never helps, because the greeter's X still
+    holds the head; restarting LightDM does, because it kills both. Both servers run with
+    `-novtswitch`, so the VT never switches back and the state stays stuck. Fix: disable
+    light-locker's autostart, `xset s off -dpms`, and a `ServerFlags` section in `xorg.conf`
+    setting `BlankTime`/`StandbyTime`/`SuspendTime`/`OffTime` to 0 so it survives a reboot.
+13. **A demanding game plays in slow motion on 4 vCPUs.** eFootball runs smoothly and at
+    roughly half speed during a match; its menus and Brawlhalla are unaffected. All four
+    vCPUs sit at 96-97% with 0% idle while the GPU is at 35-42% and drops no frames. The
+    engine holds a fixed 60 fps simulation step, so starved of CPU it slows the match rather
+    than dropping frames — and the stream still looks like smooth 60 fps, because NvFBC
+    captures the desktop at 60 whatever the game drew. The client's fps counter therefore
+    cannot detect this. Overhead beyond the game itself: **xfwm4 compositing took half a core
+    and as much GPU as the game** (disabling it moved eFootball from 241% to 291% CPU and
+    from 9-18% to 26-38% GPU — not enough to clear it), plus steamwebhelper, wineserver,
+    Xorg and Sunshine. On top of that Proton runs eFootball's DX12 through vkd3d, CPU a
+    Windows host never pays. Untested fix: 8 vCPUs (g4dn.2xlarge).
 
 ## Still to do
 
@@ -85,6 +111,33 @@ Measured with a sampler (`/usr/local/bin/stream-sampler`, 5s interval, CSV at
 - **Client-side numbers** (decode time, host latency, drops) from Artemis's overlay, and a
   subjective comparison with the Windows VM.
 - **A heavier game**, since Brawlhalla barely touches the GPU.
+- **g4dn.2xlarge (8 vCPU)** to see whether the slow motion clears, and at what hourly cost —
+  only worth doing if the Linux route is revived.
+
+## What the research says
+
+- **NVIDIA's DX12-on-Linux penalty is the likely explanation, and it is unfixed.** NVIDIA's
+  own developer forum carries a long-running report that DX12 games through vkd3d-proton lose
+  **~18% fps without ray tracing and 30-50% with it**, while **AMD GPUs perform comparably to
+  Windows**. The cause is CPU-side — draw-call overhead and CPU/GPU synchronisation inside the
+  closed driver — and vkd3d's developers say they cannot work around it. No fix across driver
+  versions 550 to 590+. vkd3d's own overhead is 1-5% on well-behaved titles, so this is
+  specific to NVIDIA, not to Proton.
+  <https://forums.developer.nvidia.com/t/directx12-performance-is-terrible-on-linux/303207>
+- **The slow motion is Unreal's doing, not the stream's.** eFootball is built on a modified
+  Unreal Engine 4, and UE's Smooth Frame Rate clamps delta time, so a starved game slows down
+  instead of stuttering. PC players disable `bSmoothFrameRate` for exactly this. Every
+  community fix for PES/eFootball slow motion is a frame-pacing one — CPU affinity, vsync mode
+  — never a GPU upgrade, which matches GPU at 38% and CPU at 97%.
+  <https://dev.epicgames.com/documentation/en-us/unreal-engine/smooth-frame-rate>
+- **4 vCPUs is below what commercial services allocate.** GeForce NOW's Performance tier gives
+  each session 8 vCPUs and 28 GB; Ultimate gives 16.
+- **The locker problem is undocumented.** None of the headless Sunshine guides, including the
+  widely cited Ubuntu 24.04 one, mention the screen locker or DPMS. Anyone following them on
+  XFCE + LightDM gets a stream that dies after ten idle minutes with a misleading error.
+- Worth trying if this route is revisited: Proton 9.0.4 rather than Experimental (ProtonDB's
+  recommendation), shadows low, post-processing and ambient occlusion off, and
+  `DXVK_FRAME_RATE=60`.
 
 ## Verdict so far
 
@@ -93,6 +146,19 @@ driver: no dummy plug, no fake EDID, NvFBC capture with no patching. The concern
 are economic rather than technical: idle bandwidth eats the licence saving, and everything
 here is ours to maintain, including a Sunshine build if we want Apollo's one-tap pairing
 (~100 lines, portable, see `docs/specs`).
+
+What came later undoes it. The desktop stack is not free: a screen locker silently broke
+capture until it was disabled, and the compositor cost as much GPU as the game, so a Linux
+image needs the desktop deliberately stripped rather than merely installed. More seriously,
+eFootball plays in slow motion on 4 vCPUs here and plays fine on Windows on the same instance
+type — and NVIDIA's unfixed DX12-on-Linux penalty explains why.
+
+That closes the economic case. Making Linux work for a game like this means 8 vCPUs
+(~$0.83/hour), which costs **more** than Windows on 4 vCPUs (~$0.763/hour). Both original
+reasons for moving have gone: idle bandwidth eats the licence saving, and on NVIDIA you pay a
+CPU tax on DX12 titles that Windows does not charge. Containers and control remain as reasons,
+but they are no longer free ones. If the route is revived, AMD (g4ad) avoids the DX12 penalty
+— at the cost of NVENC and NvFBC.
 
 ## Teardown
 
