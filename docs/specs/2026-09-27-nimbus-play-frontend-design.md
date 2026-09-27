@@ -68,15 +68,14 @@ desktop-first.
 - `scripts/api-test.sh` gains checks: login sets an httpOnly cookie, a cookie-only
   request is accepted, and logout invalidates it.
 
-## Instructions section
+## Before you start
 
-Three steps, shown when logged out or idle and hidden once a session is running:
+One line, shown when logged out or idle and hidden once a session is running:
 
-1. First time here? Install the Artemis app on your phone (links to the release).
-2. Press Start gaming, then Connect when your PC is ready.
-3. Press Stop when you're finished, so your PC isn't left running.
+> Streaming needs the Artemis app on your Android phone. [Install Artemis]
 
-Connect and Stop explain themselves at the moment they appear, so the steps stay short.
+Start, Connect and Stop are labelled buttons that appear when they apply, so the page
+does not explain them in advance.
 
 ## Visual language
 
