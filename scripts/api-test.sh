@@ -146,6 +146,10 @@ fi   # end fast checks
 # ---------------------------------------------------------------- VM checks
 if [ "${1:-}" = "--with-vm" ]; then
   section "Full flow with a real VM (user A)"
+  # The logout checks above revoked the earlier token, so sign in again.
+  TOKEN_A=$(curl -sS -m 20 -X POST "$BASE_URL/auth/login" -H 'content-type: application/json' \
+    -d "{\"email\":\"$USER_A\",\"password\":\"$PW\"}" | jq -r .token)
+  [ -n "$TOKEN_A" ] && ok "signed in again for the VM checks" || bad "signed in again for the VM checks"
   req POST /sessions/start "$TOKEN_A" '{}'; expect_status 202 "first start returns 202 accepted"
   SESSION_ID=$(printf '%s' "$BODY" | jq -r .id)
 
