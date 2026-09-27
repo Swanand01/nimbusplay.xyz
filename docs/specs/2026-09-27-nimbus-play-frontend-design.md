@@ -25,6 +25,9 @@ desktop-first.
 - **Brand: Nimbus Play**, retro-arcade styling.
 - **No state library, no router.** One page, a handful of states, `useState` and a
   polling hook are enough.
+- **Session in an httpOnly cookie**, not `localStorage`. The frontend never sees the
+  token, so a compromised dependency can't steal one for later use. The frontend
+  stores nothing and sends `credentials: 'include'`.
 
 ## Screens (one page, five states)
 
@@ -38,9 +41,11 @@ desktop-first.
 
 ## Flow
 
-1. `POST /auth/register` or `/auth/login` → token in `localStorage`.
-2. On load with a token: `GET /sessions/current`. 404 means `idle`; otherwise use the
-   returned status. A 401 anywhere clears the token and returns to `auth`.
+1. `POST /auth/register` or `/auth/login` → backend replies `Set-Cookie: session=<token>`
+   (`httpOnly`, `SameSite=Lax`, `Path=/`, `Secure` once HTTPS is on) as well as the
+   token in the body, so the test script and any future mobile client keep working.
+2. On load: `GET /me`. 401 means show `auth`; otherwise `GET /sessions/current`, where
+   404 means `idle` and anything else gives the status. A 401 later returns to `auth`.
 3. **START GAMING** → `POST /sessions/start`, then poll `GET /sessions/current` every
    5s while the status is `starting` or `stopping`. Stop polling on `ready`, `stopped`
    or `failed`.
@@ -48,6 +53,18 @@ desktop-first.
    `window.location.href = link`. Show the returned `pin` and `passphrase` underneath
    for anyone who can't use the link, with a short note that it works only in Artemis.
 5. **STOP** → `POST /sessions/stop`, return to `idle`.
+6. **Log out** → `POST /auth/logout` clears the cookie.
+
+## Backend changes
+
+- Register `@fastify/cookie`.
+- `/auth/register` and `/auth/login` also set the session cookie; new `POST /auth/logout`
+  clears it.
+- `getAuthenticatedUserId` accepts the `session` cookie as well as the existing
+  `Authorization: Bearer` header (header wins when both are present).
+- Token lifetime drops from 30 days to 7 (`AUTH_TOKEN_TTL_SECONDS=604800`).
+- `scripts/api-test.sh` gains checks: login sets an httpOnly cookie, a cookie-only
+  request is accepted, and logout invalidates it.
 
 ## Instructions section
 
