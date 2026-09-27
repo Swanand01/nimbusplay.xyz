@@ -51,8 +51,12 @@ export function App() {
       <HomeScreen
         session={nimbus.session}
         error={nimbus.error}
+        pairing={nimbus.pairing}
+        pairingError={nimbus.pairingError}
+        connecting={nimbus.connecting}
         onStart={() => void nimbus.start()}
         onStop={() => void nimbus.stop()}
+        onConnect={() => void nimbus.connect()}
         onSignOut={() => void nimbus.signOut()}
       />
     </Shell>

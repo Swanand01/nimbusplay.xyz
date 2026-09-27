@@ -11,12 +11,17 @@ export type Nimbus = {
   sessionKnown: boolean;
   error: string | null;
   notice: string | null;
+  pairing: PairingLink | null;
+  pairingError: string | null;
+  connecting: boolean;
   signIn: () => void;
   signOut: () => Promise<void>;
   start: () => Promise<void>;
   stop: () => Promise<void>;
   retrySignIn: () => Promise<void>;
   retrySession: () => Promise<void>;
+  /** Fetches a fresh pairing code and opens it in Artemis. */
+  connect: () => Promise<void>;
 };
 
 const POLL_MS = 5000;
@@ -32,6 +37,9 @@ export function useNimbus(): Nimbus {
   const [sessionKnown, setSessionKnown] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pairing, setPairing] = useState<PairingLink | null>(null);
+  const [pairingError, setPairingError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -93,6 +101,23 @@ export function useNimbus(): Nimbus {
     }
   }, []);
 
+  const connect = useCallback(async () => {
+    setConnecting(true);
+    setPairingError(null);
+    try {
+      // Fetched on tap, not ahead of time: the code is only valid for about three minutes.
+      const link = await api.pairingLink('Artemis');
+      setPairing(link);
+      location.assign(link.link);
+    } catch (err) {
+      // Drop the previous code: it is either expired or for a PC that is no longer ready.
+      setPairing(null);
+      setPairingError(messageOf(err));
+    } finally {
+      setConnecting(false);
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     setError(null);
     try {
@@ -116,6 +141,9 @@ export function useNimbus(): Nimbus {
     sessionKnown,
     error,
     notice,
+    pairing,
+    pairingError,
+    connecting,
     signIn: () => {
       setNotice(null);
       setAuth('signed-in');
@@ -124,6 +152,7 @@ export function useNimbus(): Nimbus {
     start: () => act(api.startSession),
     stop: () => act(api.stopSession),
     retrySignIn: checkSignIn,
-    retrySession: refresh
+    retrySession: refresh,
+    connect
   };
 }

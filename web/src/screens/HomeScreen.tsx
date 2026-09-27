@@ -3,7 +3,7 @@ import { Button } from '../components/Button';
 import { Instructions } from '../components/Instructions';
 import { Panel } from '../components/Panel';
 import { StatusLine } from '../components/StatusLine';
-import { ConnectButton } from './ConnectButton';
+import { ConnectButton } from '../components/ConnectButton';
 
 const STATUS_TEXT: Record<Session['status'], string> = {
   starting: 'Booting…',
@@ -16,14 +16,22 @@ const STATUS_TEXT: Record<Session['status'], string> = {
 export function HomeScreen({
   session,
   error,
+  pairing,
+  pairingError,
+  connecting,
   onStart,
   onStop,
+  onConnect,
   onSignOut
 }: {
   session: Session | null;
   error: string | null;
+  pairing: PairingLink | null;
+  pairingError: string | null;
+  connecting: boolean;
   onStart: () => void;
   onStop: () => void;
+  onConnect: () => void;
   onSignOut: () => void;
 }) {
   const status = session?.status ?? 'stopped';
@@ -48,7 +56,9 @@ export function HomeScreen({
           {(status === 'stopped' || status === 'failed') && (
             <Button onClick={onStart}>{status === 'failed' ? 'Try again' : 'Start gaming'}</Button>
           )}
-          {status === 'ready' && <ConnectButton />}
+          {status === 'ready' && (
+            <ConnectButton pairing={pairing} error={pairingError} busy={connecting} onConnect={onConnect} />
+          )}
           {(status === 'ready' || status === 'starting') && (
             <Button variant="danger" onClick={onStop}>
               Stop
