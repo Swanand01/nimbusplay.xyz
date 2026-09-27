@@ -27,7 +27,8 @@ export const config = {
   host: process.env.HOST ?? '127.0.0.1',
   auth: {
     tokenSecret: required('AUTH_TOKEN_SECRET'),
-    tokenTtlSeconds: numberFromEnv('AUTH_TOKEN_TTL_SECONDS', 60 * 60 * 24 * 30)
+    tokenTtlSeconds: numberFromEnv('AUTH_TOKEN_TTL_SECONDS', 60 * 60 * 24 * 7),
+    cookieSecure: process.env.COOKIE_SECURE === 'true'
   },
   apollo: {
     apiPort: numberFromEnv('APOLLO_API_PORT', 47990),

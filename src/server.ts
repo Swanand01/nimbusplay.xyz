@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import Fastify from 'fastify';
+import cookie from '@fastify/cookie';
+import Fastify, { type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
   listApolloClients,
@@ -36,6 +37,21 @@ const APOLLO_PAIRING_PORT_OFFSET = -1;
 const APOLLO_OTP_TTL_SECONDS = 180;
 
 const app = Fastify({ logger: true });
+
+app.register(cookie);
+
+const SESSION_COOKIE = 'session';
+
+// The browser app holds its session here: httpOnly, so page scripts can never read it.
+function setSessionCookie(reply: FastifyReply, token: string): void {
+  reply.setCookie(SESSION_COOKIE, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: config.auth.cookieSecure,
+    maxAge: config.auth.tokenTtlSeconds
+  });
+}
 
 // Schema violations are client errors: answer 400 with the first message instead of
 // letting Fastify turn the ZodError into a 500 that dumps the whole schema.
@@ -248,10 +264,9 @@ app.post('/auth/register', async (request, reply) => {
     update: { passwordHash }
   });
 
-  return {
-    userId: email,
-    token: createToken(email)
-  };
+  const token = createToken(email);
+  setSessionCookie(reply, token);
+  return { userId: email, token };
 });
 
 app.post('/auth/login', async (request, reply) => {
@@ -263,10 +278,14 @@ app.post('/auth/login', async (request, reply) => {
     return authError(reply, 'Invalid email or password');
   }
 
-  return {
-    userId: email,
-    token: createToken(email)
-  };
+  const token = createToken(email);
+  setSessionCookie(reply, token);
+  return { userId: email, token };
+});
+
+app.post('/auth/logout', async (_request, reply) => {
+  reply.clearCookie(SESSION_COOKIE, { path: '/' });
+  return reply.code(204).send();
 });
 
 app.get('/me', async (request, reply) => {

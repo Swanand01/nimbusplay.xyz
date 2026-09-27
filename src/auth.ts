@@ -78,7 +78,9 @@ export function verifyToken(token: string): TokenPayload {
 
 export async function getAuthenticatedUserId(request: FastifyRequest): Promise<string> {
   const authHeader = request.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined;
+  const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : undefined;
+  // The browser app sends an httpOnly cookie; scripts and future mobile clients send the header.
+  const token = headerToken ?? request.cookies?.session;
   if (!token) {
     throw new Error('Missing bearer token');
   }

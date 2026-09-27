@@ -94,6 +94,21 @@ TOKEN_B=$(register "$USER_B" "$PW"); [ -n "$TOKEN_B" ] && ok "second user regist
 req GET /me "$TOKEN_B"; [ "$(printf '%s' "$BODY" | jq -r '.id // .userId // empty')" = "$USER_B" ] && ok "/me returns the caller's own identity" || bad "/me returns the caller's own identity" "$BODY"
 req GET /sessions/current "$TOKEN_B"; expect_status 404 "user B has no session of their own"
 
+section "Cookie session"
+COOKIE_JAR=$(mktemp)
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -c "$COOKIE_JAR" -X POST "$BASE_URL/auth/login" \
+  -H 'content-type: application/json' -d "{\"email\":\"$USER_A\",\"password\":\"$PW\"}")
+[ "$CODE" = 200 ] && ok "login succeeds" || bad "login succeeds" "HTTP $CODE"
+grep -qi 'session' "$COOKIE_JAR" && ok "login sets a session cookie" || bad "login sets a session cookie" "$(cat "$COOKIE_JAR")"
+grep -qi '^#HttpOnly_' "$COOKIE_JAR" && ok "session cookie is httpOnly" || bad "session cookie is httpOnly" "$(cat "$COOKIE_JAR")"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" "$BASE_URL/me")
+[ "$CODE" = 200 ] && ok "cookie alone authenticates /me" || bad "cookie alone authenticates /me" "HTTP $CODE"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST "$BASE_URL/auth/logout")
+[ "$CODE" = 204 ] && ok "logout returns 204" || bad "logout returns 204" "HTTP $CODE"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" "$BASE_URL/me")
+[ "$CODE" = 401 ] && ok "cookie is rejected after logout" || bad "cookie is rejected after logout" "HTTP $CODE"
+rm -f "$COOKIE_JAR"
+
 fi   # end fast checks
 
 # ---------------------------------------------------------------- VM checks
