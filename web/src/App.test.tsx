@@ -105,6 +105,22 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /connect/i })).not.toBeInTheDocument();
   }, 15000);
 
+  it('hides Stop while the VM is still starting', async () => {
+    // EC2 refuses to stop a VM that is still coming up, so don't offer it.
+    mocked.me.mockResolvedValue({ userId: 'a@b.test' });
+    mocked.currentSession.mockResolvedValue({ id: 's1', status: 'starting' });
+    render(<App />);
+    expect(await screen.findByText(/booting/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^stop$/i })).not.toBeInTheDocument();
+  });
+
+  it('offers Stop once the VM is ready', async () => {
+    mocked.me.mockResolvedValue({ userId: 'a@b.test' });
+    mocked.currentSession.mockResolvedValue({ id: 's1', status: 'ready', publicIp: '1.2.3.4' });
+    render(<App />);
+    expect(await screen.findByRole('button', { name: /^stop$/i })).toBeInTheDocument();
+  });
+
   it('shows the backend error for a failed session', async () => {
     mocked.me.mockResolvedValue({ id: 'a@b.test' });
     mocked.currentSession.mockResolvedValue({ id: 's1', status: 'failed', error: 'Apollo did not become reachable' });

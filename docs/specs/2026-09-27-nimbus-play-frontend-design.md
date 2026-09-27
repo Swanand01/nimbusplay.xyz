@@ -37,7 +37,7 @@ desktop-first.
 |---|---|
 | `auth` | Nimbus Play logo, email + password, toggle between Log in / Sign up, and the Artemis install instructions below the fold |
 | `idle` | `PLAYER 1 READY`, a big **START GAMING** button, install instructions |
-| `starting` | `BOOTING…` with a loading bar, an explanation that the first start takes a few minutes, and a **Stop** escape hatch |
+| `starting` | `BOOTING…`, an explanation that the first start takes a few minutes, and a note that Stop appears once it's ready (EC2 refuses to stop a VM that is still coming up) |
 | `ready` | `READY — PRESS CONNECT`, a **CONNECT** button, the PIN/passphrase fallback, and **STOP** |
 | `failed` | The backend's error message in plain text, plus **TRY AGAIN** |
 
