@@ -18,7 +18,7 @@ desktop-first.
 
 ## Decisions
 
-- **React + Vite + TypeScript**, built to static files. The user asked for React.
+- **React + Vite + TypeScript + Tailwind CSS**, built to static files.
 - **Served by the backend** (`@fastify/static` from `web/dist`), so the app and API
   share one origin. No CORS, no mixed content, and when the domain and HTTPS land,
   both move together with no code change. A domain is therefore not a prerequisite.
@@ -66,7 +66,9 @@ Always visible when logged out or idle, collapsed once a session is running:
 - **Palette:** near-black background, cyan and magenta neon accents, amber warnings,
   white body text.
 - **Chrome:** chunky buttons with hard offset shadows, a faint scanline overlay, a
-  blinking cursor next to status text.
+  blinking cursor next to status text. Expressed as Tailwind theme tokens
+  (`bg-void`, `text-neon`, `shadow-hard`, `font-pixel`) rather than ad-hoc classes,
+  so the retro look stays consistent and is easy to dial back.
 - **Restraint:** retro styling stays on chrome and headings. Errors and instructions
   stay plain.
 - **Mobile first:** single column, full-width tap targets at least 44px tall; on
@@ -92,7 +94,8 @@ web/
   src/api.ts              typed fetch helpers, token handling
   src/usePolling.ts       interval hook that stops on terminal states
   src/components/        Button, Panel, StatusLine, Instructions
-  src/styles.css          tokens + retro chrome
+  src/index.css           Tailwind directives + font imports + scanline layer
+  tailwind.config.js      retro tokens: neon palette, pixel font, hard shadows
 ```
 
 Backend: add `@fastify/static` serving `web/dist` at `/`, after the API routes so it
