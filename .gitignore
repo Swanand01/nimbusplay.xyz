@@ -17,3 +17,5 @@ prisma/data/
 crash.log
 .env.production
 tfplan
+web/node_modules
+web/dist

@@ -1,5 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import cookie from '@fastify/cookie';
+import fastifyStatic from '@fastify/static';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import Fastify, { type FastifyReply } from 'fastify';
 import { z } from 'zod';
 import {
@@ -480,6 +483,22 @@ app.post('/sessions/stop', async (request, reply) => {
 
 async function main(): Promise<void> {
   await store.load();
+
+  // Registered after every API route so it can never shadow one; unknown GETs fall back
+  // to index.html so a refresh inside the app works.
+  const webRoot = join(__dirname, '..', 'web', 'dist');
+  if (existsSync(webRoot)) {
+    await app.register(fastifyStatic, { root: webRoot });
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method !== 'GET') {
+        return reply.code(404).send({ error: 'Not found' });
+      }
+      return reply.sendFile('index.html');
+    });
+  } else {
+    app.log.warn({ webRoot }, 'no built frontend found; serving API only');
+  }
+
   await app.listen({ host: config.host, port: config.port });
 }
 

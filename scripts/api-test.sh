@@ -109,6 +109,15 @@ CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -b "$COOKIE_JAR" "$BASE_URL
 [ "$CODE" = 401 ] && ok "cookie is rejected after logout" || bad "cookie is rejected after logout" "HTTP $CODE"
 rm -f "$COOKIE_JAR"
 
+section "Static frontend"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$BASE_URL/")
+[ "$CODE" = 200 ] && ok "GET / serves the app" || bad "GET / serves the app" "HTTP $CODE"
+printf '%s' "$(curl -sS -m 20 "$BASE_URL/")" | grep -qi 'nimbus play' && ok "index.html mentions Nimbus Play" || bad "index.html mentions Nimbus Play"
+CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' "$BASE_URL/some/deep/link")
+[ "$CODE" = 200 ] && ok "unknown paths serve the app (refresh works)" || bad "unknown paths serve the app" "HTTP $CODE"
+BODY=$(curl -sS -m 20 "$BASE_URL/health")
+printf '%s' "$BODY" | grep -q '"ok":true' && ok "API routes are not shadowed by static files" || bad "API routes are not shadowed" "$BODY"
+
 fi   # end fast checks
 
 # ---------------------------------------------------------------- VM checks

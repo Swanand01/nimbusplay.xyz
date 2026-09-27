@@ -82,6 +82,7 @@ npx prisma generate
 set -a; . /etc/cloud-gaming.config.env; set +a   # non-secret config only (DATABASE_URL for migrations)
 npx prisma migrate deploy
 npm run build
+if [ -f web/package.json ]; then (cd web && npm ci --no-audit --no-fund && npm run build); fi
 chown -R cloudgaming:cloudgaming /opt/cloud-gaming
 systemctl stop cloud-gaming || true
 rm -rf /opt/cloud-gaming/app && mv /opt/cloud-gaming/release /opt/cloud-gaming/app
