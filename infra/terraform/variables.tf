@@ -30,6 +30,12 @@ variable "backend_instance_type" {
   default = "t4g.small"
 }
 
+variable "domain" {
+  description = "Domain Caddy serves the app on (TLS terminates there)."
+  type        = string
+  default     = "nimbusplay.xyz"
+}
+
 variable "api_allowed_cidr" {
   description = "Who can reach the backend API on TCP 8080."
   type        = string

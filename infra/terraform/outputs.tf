@@ -7,7 +7,12 @@ output "backend_public_ip" {
 }
 
 output "backend_api_url" {
-  value = "http://${aws_eip.backend.public_ip}:8080"
+  value = "https://${var.domain}"
+}
+
+output "backend_origin_url" {
+  description = "Direct origin, reachable only from the instance itself."
+  value       = "http://${aws_eip.backend.public_ip}:8080"
 }
 
 output "deploy_bucket" {

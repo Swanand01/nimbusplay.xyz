@@ -6,13 +6,23 @@ resource "aws_security_group" "backend" {
   tags = { Name = "cloud-gaming-backend" }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "backend_api" {
+# Caddy terminates TLS here: 80 is needed for the Let's Encrypt check and the redirect.
+resource "aws_vpc_security_group_ingress_rule" "backend_http" {
   security_group_id = aws_security_group.backend.id
-  description       = "Backend API"
+  description       = "HTTP (redirect + ACME challenge)"
   ip_protocol       = "tcp"
-  from_port         = 8080
-  to_port           = 8080
-  cidr_ipv4         = var.api_allowed_cidr
+  from_port         = 80
+  to_port           = 80
+  cidr_ipv4         = "0.0.0.0/0"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "backend_https" {
+  security_group_id = aws_security_group.backend.id
+  description       = "HTTPS"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+  cidr_ipv4         = "0.0.0.0/0"
 }
 
 resource "aws_vpc_security_group_egress_rule" "backend_all" {
