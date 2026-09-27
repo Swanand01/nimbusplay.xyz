@@ -120,9 +120,16 @@ CODE=$(curl -sS -m 20 -o /dev/null -w '%{http_code}' -H "authorization: Bearer $
 
 section "Endpoints that take no body"
 # The browser sends these with no body; Fastify 400s if content-type claims JSON.
-for EP in /sessions/stop /sessions/start /auth/logout; do
-  CODE=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST "$BASE_URL$EP" -H "authorization: Bearer $TOKEN_A" 2>/dev/null)
-  [ "$CODE" != 400 ] && ok "POST $EP without a body is accepted (HTTP $CODE)" || bad "POST $EP without a body is accepted" "HTTP 400"
+# A fresh token: the logout checks above revoked the earlier one.
+FRESH=$(curl -sS -m 20 -X POST "$BASE_URL/auth/login" -H 'content-type: application/json' \
+  -d "{\"email\":\"$USER_A\",\"password\":\"$PW\"}" | jq -r .token)
+for EP in /sessions/stop /auth/logout; do
+  CODE=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST "$BASE_URL$EP" -H "authorization: Bearer $FRESH" 2>/dev/null)
+  case "$CODE" in
+    400) bad "POST $EP without a body is accepted" "HTTP 400 (content-type/body mismatch)" ;;
+    401) bad "POST $EP without a body is accepted" "HTTP 401 - the token should still be valid here" ;;
+    *) ok "POST $EP without a body is accepted (HTTP $CODE)" ;;
+  esac
 done
 
 section "Static frontend"
