@@ -16,7 +16,8 @@
 - Frontend lives in `cloud-gaming/web/`, a separate `package.json`; never add React to the backend's dependencies.
 - Tailwind 4 is CSS-first: theme tokens live in `src/index.css` under `@theme`, there is no `tailwind.config.js`. This supersedes the spec's file list.
 - Brand name is exactly `Nimbus Play`. Artemis download link is exactly `https://github.com/Swanand01/moonlight-android/releases/latest`.
-- Pixel font (`Press Start 2P`) only for logo, headings, buttons and status; body text, form fields and error messages use the system sans stack.
+- Fonts: Chakra Petch for the wordmark, headings, buttons and status words; Inter for body text, form fields and errors. No pixel font anywhere.
+- Base colour `#0F1419` (near-black, never `#000`); neon accents only on interactive elements.
 - Session cookie: name `session`, `httpOnly`, `sameSite: 'lax'`, `path: '/'`, `secure` only when `COOKIE_SECURE=true`.
 - `AUTH_TOKEN_TTL_SECONDS` default becomes `604800` (7 days).
 - Every fetch from the frontend sends `credentials: 'include'`; the frontend never stores a token.
@@ -350,7 +351,7 @@ import '@testing-library/jest-dom/vitest';
     <title>Nimbus Play</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
@@ -365,29 +366,21 @@ import '@testing-library/jest-dom/vitest';
 @import "tailwindcss";
 
 @theme {
-  --color-void: #0a0a12;
-  --color-panel: #14141f;
+  --color-void: #0f1419;
+  --color-panel: #171d24;
   --color-neon: #22d3ee;
   --color-magenta: #f472b6;
   --color-amber: #fbbf24;
-  --font-pixel: "Press Start 2P", monospace;
-  --shadow-hard: 4px 4px 0 0 var(--color-magenta);
+  --font-display: "Chakra Petch", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   background-color: var(--color-void);
   color: #e5e7eb;
-  font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Faint CRT scanlines over the whole page; pointer-events off so taps pass through. */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(transparent 0 2px, rgba(0, 0, 0, 0.25) 2px 4px);
-  opacity: 0.35;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -602,8 +595,8 @@ Expected: FAIL — `./Button` does not exist.
 import type { ReactNode } from 'react';
 
 const VARIANTS = {
-  primary: 'bg-neon text-void shadow-hard',
-  danger: 'bg-transparent text-magenta border-2 border-magenta',
+  primary: 'bg-neon text-void hover:brightness-110',
+  danger: 'bg-transparent text-magenta border border-magenta/60',
   ghost: 'bg-transparent text-neon underline'
 } as const;
 
@@ -625,7 +618,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`font-pixel text-xs w-full min-h-11 px-4 py-3 tracking-wide transition-transform active:translate-y-0.5 disabled:opacity-40 ${VARIANTS[variant]}`}
+      className={`font-display font-semibold text-sm uppercase tracking-wider w-full min-h-11 px-4 py-3 rounded-xl transition active:scale-[0.99] disabled:opacity-40 ${VARIANTS[variant]}`}
     >
       {children}
     </button>
@@ -640,8 +633,8 @@ import type { ReactNode } from 'react';
 
 export function Panel({ title, children }: { title?: string; children: ReactNode }) {
   return (
-    <section className="bg-panel border-2 border-neon/40 p-4 mb-4">
-      {title && <h2 className="font-pixel text-[10px] text-neon mb-3">{title}</h2>}
+    <section className="bg-panel rounded-2xl border border-white/5 p-5 mb-4">
+      {title && <h2 className="font-display text-xs uppercase tracking-widest text-neon mb-3">{title}</h2>}
       {children}
     </section>
   );
@@ -655,9 +648,8 @@ const TONES = { neon: 'text-neon', amber: 'text-amber', magenta: 'text-magenta' 
 
 export function StatusLine({ text, tone = 'neon' }: { text: string; tone?: keyof typeof TONES }) {
   return (
-    <p className={`font-pixel text-xs ${TONES[tone]}`} role="status">
+    <p className={`font-display text-sm uppercase tracking-widest ${TONES[tone]}`} role="status">
       {text}
-      <span className="animate-pulse">_</span>
     </p>
   );
 }
@@ -821,7 +813,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full min-h-11 bg-void border-2 border-neon/40 px-3 text-base"
+            className="mt-1 w-full min-h-11 bg-void rounded-xl border border-white/10 px-3 text-base focus:border-neon outline-none"
           />
         </label>
         <label className="text-sm">
@@ -833,7 +825,7 @@ export function AuthScreen({ onSignedIn }: { onSignedIn: () => void }) {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full min-h-11 bg-void border-2 border-neon/40 px-3 text-base"
+            className="mt-1 w-full min-h-11 bg-void rounded-xl border border-white/10 px-3 text-base focus:border-neon outline-none"
           />
         </label>
         {error && <p className="text-sm text-amber">{error}</p>}
@@ -961,7 +953,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="min-h-dvh px-4 py-8">
       <div className="mx-auto w-full max-w-[420px]">
-        <h1 className="font-pixel text-base text-neon mb-1">NIMBUS<span className="text-magenta">PLAY</span></h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-neon mb-1">NIMBUS<span className="text-magenta"> PLAY</span></h1>
         <p className="text-xs text-gray-400 mb-6">Your gaming PC, in the cloud.</p>
         {children}
       </div>
@@ -1096,8 +1088,8 @@ export function ConnectButton() {
         <div className="text-sm text-gray-300">
           <p>If Artemis didn't open, add the PC manually and pair with:</p>
           <p className="mt-1">
-            PIN <span className="font-pixel text-neon">{pairing.pin}</span> · passphrase{' '}
-            <span className="font-pixel text-neon">{pairing.passphrase}</span>
+            PIN <span className="font-display font-bold text-neon">{pairing.pin}</span> · passphrase{' '}
+            <span className="font-display font-bold text-neon">{pairing.passphrase}</span>
           </p>
           <p className="mt-1 text-xs text-gray-400">Expires in {Math.round(pairing.expiresInSeconds / 60)} minutes. Press CONNECT again for a new code.</p>
         </div>
@@ -1162,6 +1154,7 @@ git commit -m "Add the connect button and how-to-play instructions"
 **Files:**
 - Modify: `README.md` (frontend section)
 - Modify: `docs/specs/2026-09-27-nimbus-play-frontend-design.md` (note Tailwind 4 uses `@theme`, not `tailwind.config.js`)
+- Check on a phone that the wordmark and status words are legible at 360px and that no text sits below 16px.
 
 - [ ] **Step 1: Deploy**
 

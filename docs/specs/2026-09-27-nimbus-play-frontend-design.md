@@ -78,18 +78,21 @@ Always visible when logged out or idle, collapsed once a session is running:
 
 ## Visual language
 
-- **Type:** Press Start 2P for logo, headings, buttons and status; system sans for
-  body text, form fields and errors (a pixel font is unreadable in paragraphs).
-- **Palette:** near-black background, cyan and magenta neon accents, amber warnings,
-  white body text.
-- **Chrome:** chunky buttons with hard offset shadows, a faint scanline overlay, a
-  blinking cursor next to status text. Expressed as Tailwind theme tokens
-  (`bg-void`, `text-neon`, `shadow-hard`, `font-pixel`) rather than ad-hoc classes,
-  so the retro look stays consistent and is easy to dial back.
-- **Restraint:** retro styling stays on chrome and headings. Errors and instructions
-  stay plain.
-- **Mobile first:** single column, full-width tap targets at least 44px tall; on
-  desktop the same column, centred, max ~420px.
+Dark console UI with neon accents: the dominant pattern in gaming products, and it
+keeps the text people must read legible.
+
+- **Type:** Chakra Petch for the `NIMBUS PLAY` wordmark, headings and status words;
+  Inter for body text, instructions, form fields and errors. No pixel font.
+- **Palette:** base `#0F1419` (near-black, not pure black, which halates on OLED),
+  panels a step lighter, cyan for primary actions, magenta sparingly for the wordmark
+  and destructive actions, amber for warnings, `#E5E7EB` body text.
+- **Neon is for interactive elements only:** buttons, active states, status. Surfaces
+  and text stay neutral.
+- **Shapes:** large rounded cards, full-width buttons, console-like rather than 8-bit.
+- **Readability:** body text 16px with 1.5 line height; status words may be uppercase
+  and tracked, never long sentences.
+- **Mobile first:** single column, tap targets at least 44px tall; on desktop the same
+  column, centred, max ~420px.
 
 ## Errors
 
@@ -111,8 +114,7 @@ web/
   src/api.ts              typed fetch helpers, token handling
   src/usePolling.ts       interval hook that stops on terminal states
   src/components/        Button, Panel, StatusLine, Instructions
-  src/index.css           Tailwind directives + font imports + scanline layer
-  tailwind.config.js      retro tokens: neon palette, pixel font, hard shadows
+  src/index.css           Tailwind directives + font imports + @theme tokens
 ```
 
 Backend: add `@fastify/static` serving `web/dist` at `/`, after the API routes so it
