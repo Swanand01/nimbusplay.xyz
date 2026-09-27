@@ -18,7 +18,9 @@ desktop-first.
 
 ## Decisions
 
-- **React + Vite + TypeScript + Tailwind CSS**, built to static files.
+- **React + Vite + TypeScript + Tailwind CSS 4**, built to static files. Tailwind 4 is
+  CSS-first: theme tokens live in `src/index.css` under `@theme`, with no
+  `tailwind.config.js`.
 - **Served by the backend** (`@fastify/static` from `web/dist`), so the app and API
   share one origin. No CORS, no mixed content, and when the domain and HTTPS land,
   both move together with no code change. A domain is therefore not a prerequisite.

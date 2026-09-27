@@ -146,6 +146,21 @@ curl http://localhost:8080/pairing/clients \
   -H "authorization: Bearer $TOKEN"
 ```
 
+## Frontend (Nimbus Play)
+
+`web/` is the React + Vite + Tailwind app the backend serves at `/`. Sign up, start
+the VM, tap Connect to open Artemis already paired.
+
+```bash
+cd web && npm install
+npm run dev     # http://localhost:5173, API proxied to 127.0.0.1:8080
+npm test        # vitest
+npm run build   # -> web/dist, which the backend serves
+```
+
+`infra/scripts/deploy-backend.sh` builds `web/` on the host, so a normal deploy ships
+the frontend too.
+
 ## Tests
 
 ```bash
