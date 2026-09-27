@@ -206,7 +206,12 @@ if [ "${1:-}" = "--with-vm" ]; then
     printf '\n'
     [ "$ST" = ready ] && ok "restart reaches ready" || bad "restart reaches ready" "$BODY"
     [ "$(printf '%s' "$BODY" | jq -r .instanceId)" = "$INSTANCE_ID" ] && ok "restart reuses the same VM" || bad "restart reuses the same VM" "$BODY"
-    [ "$(printf '%s' "$BODY" | jq -r .publicIp)" = "$PUBLIC_IP" ] && ok "restart keeps the same public IP" || bad "restart keeps the same public IP" "$BODY"
+    NEW_IP=$(printf '%s' "$BODY" | jq -r .publicIp)
+    printf '%s' "$NEW_IP" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' && ok "restart reports a usable public IP ($NEW_IP)" || bad "restart reports a usable public IP" "$BODY"
+    # No Elastic IP any more: AWS bills a reserved IPv4 around the clock, an auto-assigned
+    # one only while the VM runs. The address changes, and Connect hands out the new one.
+    [ -z "$(aws ec2 describe-addresses --filters "Name=tag:UserId,Values=$USER_A" --query 'Addresses[].PublicIp' --output text)" ] \
+      && ok "no Elastic IP is reserved for the user" || bad "no Elastic IP is reserved for the user"
 
     section "Known gap: start while stopping"
     req POST /sessions/stop "$TOKEN_A" >/dev/null

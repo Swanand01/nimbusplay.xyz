@@ -5,12 +5,10 @@ export type StartResult = {
   publicIp?: string;
   privateIp?: string;
   gameVolumeId: string;
-  elasticIpAllocationId?: string;
 };
 
 export interface CloudProvider {
   ensureGameVolume(user: UserRecord): Promise<{ volumeId: string; availabilityZone: string }>;
-  ensureElasticIp(user: UserRecord): Promise<{ allocationId: string; publicIp: string }>;
   startInstance(
     user: UserRecord,
     session: SessionRecord,

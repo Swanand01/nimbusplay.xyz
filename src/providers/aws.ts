@@ -1,9 +1,6 @@
 import {
-  AllocateAddressCommand,
-  AssociateAddressCommand,
   AttachVolumeCommand,
   CreateVolumeCommand,
-  DescribeAddressesCommand,
   DescribeInstancesCommand,
   DescribeVolumesCommand,
   EC2Client,
@@ -58,43 +55,6 @@ export class AwsProvider implements CloudProvider {
     return { volumeId: created.VolumeId, availabilityZone: config.aws.availabilityZone };
   }
 
-  async ensureElasticIp(user: UserRecord): Promise<{ allocationId: string; publicIp: string }> {
-    if (user.elasticIpAllocationId && user.elasticIp) {
-      const existing = await this.ec2.send(new DescribeAddressesCommand({
-        AllocationIds: [user.elasticIpAllocationId]
-      }));
-
-      const address = existing.Addresses?.[0];
-      if (address?.PublicIp) {
-        return { allocationId: user.elasticIpAllocationId, publicIp: address.PublicIp };
-      }
-    }
-
-    const allocated = await this.ec2.send(new AllocateAddressCommand({
-      Domain: 'vpc',
-      TagSpecifications: [
-        {
-          ResourceType: 'elastic-ip',
-          Tags: [
-            { Key: 'Name', Value: `cloud-gaming-${user.id}-eip` },
-            { Key: 'Project', Value: 'cloud-gaming' },
-            { Key: 'Role', Value: 'user-stable-ip' },
-            { Key: 'UserId', Value: user.id }
-          ]
-        }
-      ]
-    }));
-
-    if (!allocated.AllocationId || !allocated.PublicIp) {
-      throw new Error('AWS did not return an Elastic IP allocation');
-    }
-
-    return {
-      allocationId: allocated.AllocationId,
-      publicIp: allocated.PublicIp
-    };
-  }
-
   async startInstance(
     user: UserRecord,
     session: SessionRecord,
@@ -147,19 +107,16 @@ export class AwsProvider implements CloudProvider {
       { VolumeIds: [gameVolumeId] }
     );
 
-    const elasticIp = await this.ensureElasticIp(user);
-    await this.ec2.send(new AssociateAddressCommand({
-      AllocationId: elasticIp.allocationId,
-      InstanceId: instanceId,
-      AllowReassociation: true
-    }));
+    // No Elastic IP: AWS bills a reserved IPv4 around the clock, an auto-assigned one
+    // only while the VM runs. The address changes per session and Connect hands out the
+    // current one, which Artemis matches to the saved PC by its id.
+    const addresses = await this.describeInstance(instanceId);
 
     return {
       instanceId,
-      publicIp: elasticIp.publicIp,
-      privateIp: await this.getInstancePrivateIp(instanceId),
-      gameVolumeId,
-      elasticIpAllocationId: elasticIp.allocationId
+      publicIp: addresses.publicIp,
+      privateIp: addresses.privateIp,
+      gameVolumeId
     };
   }
 
@@ -186,19 +143,13 @@ export class AwsProvider implements CloudProvider {
 
     await this.ensureVolumeAttached(instanceId, gameVolumeId);
 
-    const elasticIp = await this.ensureElasticIp(user);
-    await this.ec2.send(new AssociateAddressCommand({
-      AllocationId: elasticIp.allocationId,
-      InstanceId: instanceId,
-      AllowReassociation: true
-    }));
+    const addresses = await this.describeInstance(instanceId);
 
     return {
       instanceId,
-      publicIp: elasticIp.publicIp,
-      privateIp: await this.getInstancePrivateIp(instanceId),
-      gameVolumeId,
-      elasticIpAllocationId: elasticIp.allocationId
+      publicIp: addresses.publicIp,
+      privateIp: addresses.privateIp,
+      gameVolumeId
     };
   }
 
@@ -225,12 +176,6 @@ export class AwsProvider implements CloudProvider {
     };
   }
 
-  private async getInstancePrivateIp(instanceId: string): Promise<string | undefined> {
-    const instance = await this.describeInstance(instanceId);
-    return instance.privateIp;
-  }
-
-  // A previous launch may have failed before attaching the volume.
   private async ensureVolumeAttached(instanceId: string, volumeId: string): Promise<void> {
     const volume = await this.ec2.send(new DescribeVolumesCommand({
       VolumeIds: [volumeId]

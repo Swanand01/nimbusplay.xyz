@@ -177,7 +177,6 @@ async function startSessionInBackground(userId: string, sessionId: string): Prom
     session.artemisHost = result.publicIp;
     session.gameVolumeId = result.gameVolumeId;
     user.instanceId = result.instanceId;
-    user.elasticIpAllocationId = result.elasticIpAllocationId;
     user.elasticIp = result.publicIp;
     user.privateIp = result.privateIp;
     await store.updateUser(user);

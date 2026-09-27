@@ -13,10 +13,12 @@ config:
         inputs:
           suffixes:
             - $REGION.ec2-utilities.amazonaws.com
+      # doNothing, not random: the AMI ships with a blank Administrator password and
+      # auto-login, and a fresh random password on every new VM would break both.
       - task: setAdminAccount
         inputs:
           password:
-            type: random
+            type: doNothing
       - task: setWallpaper
         inputs:
           attributes:

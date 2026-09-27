@@ -12,11 +12,13 @@ enterprise hardening.
 
 ## Out of Terraform
 
-- **Gaming AMI**: `ami-05cfe1e90b4ba902c` (baked 2026-09-20: Apollo a7eb5e9, clean of personal logins/paired devices, EC2Launch initializeVolume for the D: game volume). Passed
+- **Gaming AMI**: `ami-0b5913a08c8b2ff4f` (baked 2026-09-20: Apollo a7eb5e9, clean of personal logins/paired devices, EC2Launch initializeVolume for the D: game volume). Passed
   in as a variable so `terraform destroy` can never delete it. Updated by
   baking a new AMI from a builder VM (see "AMI updates").
-- **Per-user VMs, game volumes, Elastic IPs**: created at runtime by the
-  backend, as today.
+- **Per-user VMs and game volumes**: created at runtime by the backend. VMs use the
+  subnet's auto-assigned public IP, which AWS bills only while the VM runs; a reserved
+  Elastic IP costs ~$3.65/user/month around the clock. The address changes each
+  session, and the pairing link carries the current one.
 
 ## Terraform layout
 
@@ -61,8 +63,8 @@ Gaming VM role (`cloud-gaming-vm`, trusted by ec2.amazonaws.com):
 - `AmazonSSMManagedInstanceCore`.
 
 Backend role (`cloud-gaming-backend`):
-- EC2: Run/Start/Stop/Describe instances, Create/Attach/Describe volumes,
-  Allocate/Associate/Describe addresses, CreateTags, and waiter describe calls.
+- EC2: Run/Start/Stop/Describe instances, Create/Attach/Describe volumes, CreateTags,
+  and waiter describe calls.
 - `iam:PassRole` on the gaming VM role only.
 - `s3:GetObject` on the deploy bucket.
 - `AmazonSSMManagedInstanceCore`.
