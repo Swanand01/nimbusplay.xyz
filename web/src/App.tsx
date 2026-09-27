@@ -85,7 +85,6 @@ export function App() {
     return (
       <Shell>
         <AuthScreen onSignedIn={() => setAuth('signed-in')} />
-        <Instructions />
       </Shell>
     );
   }

@@ -29,6 +29,8 @@ describe('App', () => {
     mocked.me.mockRejectedValue(new ApiError(401, 'Unauthorized'));
     render(<App />);
     expect(await screen.findByRole('button', { name: /^log in$/i })).toBeInTheDocument();
+    // How to play belongs on the home screen, where the buttons it mentions exist.
+    expect(screen.queryByText(/how to play/i)).not.toBeInTheDocument();
   });
 
   it('shows Start gaming when signed in with no session', async () => {
