@@ -10,6 +10,11 @@ NimbusPlay is an experimental cloud-gaming platform built around Apollo and Arte
 - AWS infrastructure definitions in `infra/terraform/`
 - Separate persistent storage for each player's games
 
+## Related projects
+
+- [Apollo](https://github.com/Swanand01/Apollo) — the customized game-streaming host
+- [Artemis](https://github.com/Swanand01/moonlight-android) — the customized Android streaming client
+
 ## Local development
 
 ```bash
