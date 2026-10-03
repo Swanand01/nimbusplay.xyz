@@ -19,3 +19,9 @@ crash.log
 tfplan
 web/node_modules
 web/dist
+
+# Local Terraform state and credentials
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars

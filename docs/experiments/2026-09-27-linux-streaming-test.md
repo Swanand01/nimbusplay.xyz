@@ -23,7 +23,7 @@ poor NVIDIA driver support. This test measures those claims on our own hardware.
 | Capture | **NvFBC** (chosen automatically) | Lowest-overhead path; supported natively on the T4, and since Jan 2025 needs no driver patch |
 | Encode | NVENC (H.264 + HEVC) | |
 | Streaming | Sunshine 2026.914 (official .deb), as a user service | |
-| Games | Steam + Proton, library on a separate 140 GB volume at `/games` | Mirrors the Windows D: drive |
+| Games | Steam + Proton, library at `/games` on a separate EBS volume (140 GB, later 200 GB) | Mirrors the Windows D: drive |
 
 Instance layout matches production: 50 GB root, separate 140 GB gp3 volume, same VPC and
 subnet, streaming ports open to one IP via a temporary security group.
@@ -91,7 +91,18 @@ Measured with a sampler (`/usr/local/bin/stream-sampler`, 5s interval, CSV at
     `-novtswitch`, so the VT never switches back and the state stays stuck. Fix: disable
     light-locker's autostart, `xset s off -dpms`, and a `ServerFlags` section in `xorg.conf`
     setting `BlankTime`/`StandbyTime`/`SuspendTime`/`OffTime` to 0 so it survives a reboot.
-13. **A demanding game plays in slow motion on 4 vCPUs.** eFootball runs smoothly and at
+13. **The Steam library was built on the instance store, not the EBS volume, and a stop/start
+    wiped it.** A g4dn.xlarge exposes its 125 GB ephemeral NVMe alongside the EBS volumes, the
+    kernel numbers them in no fixed order, and `/games` was formatted and labelled on the
+    ephemeral one. Everything looked correct until the instance was stopped; the next boot
+    logged `Timed out waiting for device /dev/disk/by-label/games` and the EBS volume turned
+    out to have no filesystem at all — it had never been used. Roughly 60 GB of game installs
+    were lost, though nothing else was: the driver, Sunshine and Steam itself live on the root
+    volume. This is the same trap the Windows AMI already guards against. **Select the disk by
+    its volume id, never by size or kernel order**: AWS puts the id in the NVMe serial, so
+    `/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_vol<id>` resolves to the right device, and
+    the instance store identifies itself as `Amazon EC2 NVMe Instance Storage`.
+14. **A demanding game plays in slow motion on 4 vCPUs.** eFootball runs smoothly and at
     roughly half speed during a match; its menus and Brawlhalla are unaffected. All four
     vCPUs sit at 96-97% with 0% idle while the GPU is at 35-42% and drops no frames. The
     engine holds a fixed 60 fps simulation step, so starved of CPU it slows the match rather
