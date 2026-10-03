@@ -15,6 +15,24 @@ NimbusPlay is an experimental cloud-gaming platform built around Apollo and Arte
 - [Apollo](https://github.com/Swanand01/Apollo) — the customized game-streaming host
 - [Artemis](https://github.com/Swanand01/moonlight-android) — the customized Android streaming client
 
+## Cloud architecture
+
+```mermaid
+flowchart LR
+    User[Player] --> Web[NimbusPlay web app]
+    Web --> API[Fastify backend\nEC2]
+
+    subgraph AWS[AWS VPC]
+        API -->|start, stop and pair| VM[Gaming VM\nApollo + GPU]
+        Template[EC2 launch template] --> VM
+        VM --- Root[(Windows volume)]
+        VM --- Games[(Persistent game volume)]
+        Secrets[SSM parameters] --> API
+    end
+
+    User -->|Artemis game stream| VM
+```
+
 ## Local development
 
 ```bash
